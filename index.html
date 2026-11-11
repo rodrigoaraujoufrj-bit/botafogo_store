@@ -161,6 +161,7 @@
         </select>
         <select id="sort" aria-label="Ordenar">
           <option value="featured">Destaques</option>
+          <option value="discount">Maior desconto</option>
           <option value="cheap">Menor preço</option>
           <option value="name">Nome</option>
         </select>
@@ -206,6 +207,9 @@ const clean = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u0
 const money = cents => brl.format(cents / 100);
 const pct = value => percent.format(value) + '%';
 const stocked = item => item.available && item.price > 0;
+const announcedDiscount = item => stocked(item) && !item.stale && item.announced_saving > 0
+  ? item.announced_pct || 0
+  : 0;
 const atHistoricalLow = item => stocked(item) && !item.stale
   && item.previous_historical_low > 0 && item.price <= item.previous_historical_low;
 const sizeOf = item => item.size || 'Único';
@@ -292,7 +296,8 @@ function currentGroups() {
     if (shelf !== shelves[0] && group.category !== shelf) continue;
     const matches = group.variants.filter(item => eligible(item, group, mode, size, query));
     if (!matches.length) continue;
-    matches.sort((a,b) => Number(stocked(b)) - Number(stocked(a)) || Number(a.stale) - Number(b.stale) || a.price - b.price);
+    matches.sort((a,b) => (sort === 'discount' ? announcedDiscount(b) - announcedDiscount(a) : 0)
+      || Number(stocked(b)) - Number(stocked(a)) || Number(a.stale) - Number(b.stale) || a.price - b.price);
     const best = matches[0];
     const drop = Math.max(...matches.map(item => !item.stale && item.event === 'drop' ? item.additional_pct : 0));
     const priority = matches.some(isMizunoPromotion);
@@ -301,6 +306,8 @@ function currentGroups() {
   return result.sort((a,b) => {
     if (sort === 'name') return collator.compare(a.best.name,b.best.name);
     if (sort === 'cheap') return Number(stocked(b.best)) - Number(stocked(a.best)) || a.best.price - b.best.price;
+    if (sort === 'discount') return announcedDiscount(b.best) - announcedDiscount(a.best)
+      || collator.compare(a.best.name,b.best.name);
     return Number(b.priority) - Number(a.priority) || b.drop - a.drop
       || (b.best.stale ? 0 : b.best.announced_pct) - (a.best.stale ? 0 : a.best.announced_pct)
       || collator.compare(a.best.name,b.best.name);
@@ -390,6 +397,7 @@ function highlightCard({group,item}, label, detail, priority = false) {
 
 function card(group) {
   const item = group.best;
+  const byDiscount = $('sort').value === 'discount';
   const product = element('article',undefined,'card');
   const image = element('button',undefined,'photo');
   image.type = 'button';
@@ -398,6 +406,7 @@ function card(group) {
   image.append(photo(item.image || group.variants.find(variant => variant.image)?.image));
   image.onclick = () => openDetail(group);
   if (isMizunoPromotion(item)) image.append(element('span','−' + pct(item.announced_pct),'flag'));
+  else if (byDiscount && announcedDiscount(item)) image.append(element('span','−' + pct(announcedDiscount(item)),'flag sale'));
   else if (atHistoricalLow(item)) image.append(element('span','Mínimo histórico','flag'));
   else if (group.drop) image.append(element('span','Queda real','flag'));
   else if (!item.stale && stocked(item) && item.announced_pct > 0) image.append(element('span','−' + pct(item.announced_pct),'flag sale'));
@@ -422,12 +431,12 @@ function card(group) {
   title.setAttribute('aria-haspopup','dialog');
   title.onclick = () => openDetail(group);
   const count = new Set(group.variants.map(sizeOf)).size;
-  const label = count > 1 ? count + ' tamanhos' : 'Tamanho ' + sizeOf(item);
+  const label = count > 1 && !byDiscount ? count + ' tamanhos' : 'Tamanho ' + sizeOf(item);
   const meta = label + (item.stale ? ' · preço anterior' : '');
   const price = element('button',undefined,'price-button');
   price.setAttribute('aria-haspopup','dialog');
   if (stocked(item)) {
-    if (group.matches.some(other => stocked(other) && other.price !== item.price && other.stale === item.stale)) {
+    if (!byDiscount && group.matches.some(other => stocked(other) && other.price !== item.price && other.stale === item.stale)) {
       price.append(element('small','A partir de'));
     }
     price.append(document.createTextNode(money(item.price)));
