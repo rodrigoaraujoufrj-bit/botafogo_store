@@ -490,8 +490,10 @@ function card(group) {
   const title = element('button',item.name,'product-title');
   title.setAttribute('aria-haspopup','dialog');
   title.onclick = () => openDetail(group);
-  const count = new Set(group.variants.map(sizeOf)).size;
-  const label = count > 1 && !byDiscount ? count + ' tamanhos' : 'Tamanho ' + sizeOf(item);
+  const count = new Set(group.variants.filter(variant => stocked(variant) && !variant.stale).map(sizeOf)).size;
+  const label = $('size').value || byDiscount || count <= 1
+    ? 'Tamanho ' + sizeOf(item)
+    : count + ' tamanhos em estoque';
   const meta = label + (item.stale ? ' · preço anterior' : '');
   const price = element('button',undefined,'price-button');
   price.setAttribute('aria-haspopup','dialog');
@@ -522,11 +524,12 @@ function openDetail(group) {
   const counts = new Map();
   for (const item of variants) counts.set(sizeOf(item),(counts.get(sizeOf(item)) || 0) + 1);
   $('detailTitle').textContent = group.best.name;
-  const available = variants.filter(stocked).length;
-  $('variantCount').textContent = available + ' de ' + variants.length + ' variações em estoque';
+  const available = variants.filter(item => stocked(item) && !item.stale).length;
+  $('variantCount').textContent = available + ' de ' + variants.length + ' variações com estoque confirmado';
   const buttons = variants.map(item => {
     const label = counts.get(sizeOf(item)) > 1 ? [sizeOf(item), item.color, 'SKU ' + item.sku, 'vend. ' + item.seller].filter(Boolean).join(' · ') : sizeOf(item);
-    const button = element('button',label,'pill' + (stocked(item) ? '' : ' unavailable'));
+    const confirmed = stocked(item) && !item.stale;
+    const button = element('button',label + (confirmed ? '' : item.stale ? ' · sem confirmação' : ' · indisponível'),'pill' + (confirmed ? '' : ' unavailable'));
     button.type = 'button';
     button.onclick = () => select(item);
     return button;
@@ -659,7 +662,7 @@ function updateSizeOptions() {
   options[0].value = '';
   for (const name of segments) {
     if (segment && name !== segment) continue;
-    const labels = [...new Set(groups.flatMap(group => group.variants.filter(item => segmentOf(item) === name).map(sizeOf)))];
+    const labels = [...new Set(groups.flatMap(group => group.variants.filter(item => segmentOf(item) === name && stocked(item) && !item.stale).map(sizeOf)))];
     if (!labels.length) continue;
     labels.sort((a,b) => {
       const first = sizesInOrder.indexOf(a.toUpperCase());
