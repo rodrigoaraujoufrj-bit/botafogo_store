@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#161616">
+  <meta name="description" content="Acompanhe preços e encontre quedas reais na loja oficial do Botafogo.">
+  <title>Radar Botafogo · Vitrine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme:light; --ink:#171717; --muted:#595959; --ground:#e9e9e9; --line:#e2e2e2; --soft:#f2f2f2; }
+    *,*::before,*::after { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; color:var(--ink); background:var(--ground); font:14px/1.5 Inter,system-ui,sans-serif; }
+    h1,h2,p { margin:0; }
+    button,input,select { font:inherit; color:inherit; }
+    button { cursor:pointer; }
+    a { color:inherit; }
+    :focus-visible { outline:3px solid #575757; outline-offset:3px; }
+    .shell { width:min(100% - 52px,1240px); margin-inline:auto; }
+    .masthead { background:#161616; color:#fff; }
+    .masthead .shell { display:flex; align-items:center; justify-content:space-between; gap:18px; min-height:72px; }
+    .wordmark { display:flex; align-items:center; gap:10px; text-decoration:none; font-size:20px; font-weight:800; letter-spacing:-.045em; }
+    .wordmark span { display:grid; place-items:center; background:#fff; color:#161616; border-radius:50%; width:31px; height:31px; font-size:18px; }
+    .masthead .shop { color:#e1e1e1; font-size:12px; white-space:nowrap; text-decoration:none; }
+    .masthead .shop:hover { text-decoration:underline; }
+    .divider { height:7px; background:repeating-linear-gradient(125deg,#111 0 22px,#fff 22px 36px); border-top:1px solid #505050; }
+    main { padding-block:35px 20px; }
+    .intro { display:flex; justify-content:space-between; align-items:end; gap:15px; margin-bottom:23px; }
+    h1 { font-size:clamp(34px,6vw,64px); font-weight:900; line-height:.99; letter-spacing:-.075em; }
+    .intro p { margin-top:9px; color:var(--muted); }
+    #sync { color:var(--muted); font-size:12px; text-align:right; }
+    .board { background:#f6f6f6; border:1px solid #fff; border-radius:25px; padding:20px; }
+    .tabs { display:flex; gap:7px; overflow-x:auto; padding:4px 3px 11px; }
+    .pill { background:#fff; border:1px solid var(--line); border-radius:999px; padding:8px 14px; white-space:nowrap; font-weight:650; font-size:13px; }
+    .pill[aria-pressed=true],.pill:hover,.solid { background:#171717; color:#fff; border-color:#171717; }
+    .filters { display:flex; gap:7px; flex-wrap:wrap; margin:5px 0 15px; }
+    .filters input,.filters select { background:#fff; border:1px solid var(--line); border-radius:14px; padding:9px 11px; min-width:0; min-height:41px; }
+    .filters input { flex:1 1 210px; }
+    .filters select { flex:0 1 auto; }
+    .section-head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin:3px 2px 13px; }
+    .section-head h2 { font-size:20px; letter-spacing:-.045em; }
+    #count { color:var(--muted); font-size:12px; }
+    .grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; }
+    .card { position:relative; display:flex; flex-direction:column; background:#fff; border:1px solid #ededed; border-radius:18px; padding:7px; overflow:hidden; }
+    .card:hover { border-color:#bdbdbd; }
+    .photo { position:relative; display:grid; place-items:center; aspect-ratio:1; overflow:hidden; background:#efefef; border:0; border-radius:13px; width:100%; padding:0; }
+    .photo img,.detail-image img { width:100%; height:100%; min-height:0; min-width:0; object-fit:contain; mix-blend-mode:multiply; }
+    .photo img { transition:transform .18s ease-out; }
+    .photo:hover img { transform:scale(1.04); }
+    .missing { color:var(--muted); font-size:12px; }
+    .flag { position:absolute; z-index:1; top:8px; left:8px; background:#181818; color:white; border-radius:999px; padding:4px 8px; font-size:10px; font-weight:800; pointer-events:none; }
+    .flag.sale { background:#fff; color:#1b1b1b; border:1px solid var(--line); }
+    .favorite { position:absolute; z-index:2; right:14px; top:14px; border:0; border-radius:50%; width:31px; height:31px; display:grid; place-items:center; font-size:19px; line-height:1; background:#fff; }
+    .favorite[aria-pressed=true] { background:#171717; color:white; }
+    .card-body { display:grid; gap:7px; padding:10px 5px 6px; flex:1; }
+    .product-title { display:block; width:100%; text-align:left; align-self:start; background:none; border:0; padding:0; min-height:2.6em; font-weight:750; line-height:1.28; overflow-wrap:anywhere; }
+    .card-meta { font-size:11px; color:var(--muted); }
+    .price-button { align-self:end; display:flex; justify-content:center; align-items:baseline; gap:4px; flex-wrap:wrap; width:100%; border:1px solid #272727; background:#fff; border-radius:999px; padding:6px 5px; font-size:13px; font-weight:800; }
+    .price-button:hover { background:#171717; color:#fff; }
+    .price-button small { font-size:10px; font-weight:500; }
+    .empty { grid-column:1/-1; padding:32px 6px; color:var(--muted); }
+    #pagination { display:flex; align-items:center; justify-content:center; gap:12px; padding-top:20px; }
+    #pagination button:disabled { opacity:.5; cursor:default; }
+    footer { color:var(--muted); padding-block:3px 25px; font-size:12px; }
+    dialog { border:0; background:#f4f4f4; color:var(--ink); border-radius:24px; padding:13px; width:min(800px,calc(100vw - 28px)); max-height:90dvh; overflow:auto; }
+    dialog::backdrop { background:#111b; }
+    .dialog-top { display:flex; align-items:center; justify-content:space-between; padding:0 2px 11px; font-weight:800; }
+    .dialog-top button { border:0; border-radius:999px; background:#fff; padding:7px 12px; font-size:12px; }
+    .detail-layout { display:grid; grid-template-columns:1fr 1.1fr; align-items:start; gap:12px; }
+    .detail-image { display:grid; place-items:center; aspect-ratio:1; background:#e8e8e8; border-radius:17px; overflow:hidden; }
+    .detail-info { background:#fff; border-radius:17px; padding:16px; }
+    .detail-info h2 { font-size:23px; line-height:1.12; letter-spacing:-.045em; }
+    #variantCount,#variantMeta { color:var(--muted); font-size:12px; margin-top:5px; }
+    .variant-label { display:block; font-weight:800; margin-top:14px; }
+    .sizes { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0; }
+    .sizes .pill { padding:5px 9px; font-size:12px; }
+    .sizes .unavailable { border-style:dashed; color:#585858; }
+    .sizes .unavailable[aria-pressed=true] { color:#fff; }
+    .detail-price { display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; margin-top:13px; }
+    #currentPrice { font-size:25px; letter-spacing:-.055em; font-weight:850; }
+    #referencePrice { color:var(--muted); font-size:12px; }
+    .metrics { margin:9px 0; padding:10px; background:var(--soft); border-radius:12px; display:grid; gap:4px; font-size:12px; }
+    .metrics strong { font-weight:800; }
+    .detail-actions { display:flex; flex-wrap:wrap; gap:6px; }
+    .detail-actions a { text-decoration:none; }
+    @media (max-width:930px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+    @media (max-width:650px) {
+      .shell { width:calc(100% - 22px); }
+      .masthead .shell { min-height:55px; }
+      .wordmark { font-size:17px; }
+      .wordmark span { width:26px; height:26px; font-size:15px; }
+      main { padding-top:24px; }
+      .intro { display:block; margin-bottom:13px; }
+      #sync { text-align:left; margin-top:7px; }
+      .board { border-radius:20px; padding:8px; }
+      .tabs { padding-bottom:8px; }
+      .filters { margin-inline:3px; }
+      .filters input { flex-basis:100%; }
+      .filters select { flex:1 1 105px; font-size:12px; }
+      .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+      .card { padding:5px; border-radius:14px; }
+      .photo { border-radius:10px; }
+      .card-body { padding:8px 3px 4px; gap:5px; }
+      .product-title { font-size:12px; }
+      .favorite { top:10px; right:10px; width:25px; height:25px; font-size:15px; }
+      .detail-layout { grid-template-columns:1fr; }
+      .detail-image { aspect-ratio:5/4; }
+    }
+    @media (prefers-reduced-motion:reduce) { .photo img { transition:none; } }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="shell">
+      <a class="wordmark" href="./"><span aria-hidden="true">★</span> Radar Botafogo</a>
+      <a class="shop" href="https://store.botafogo.com.br/" target="_blank" rel="noopener noreferrer">Loja oficial ↗</a>
+    </div>
+    <div class="divider" aria-hidden="true"></div>
+  </header>
+
+  <main class="shell">
+    <div class="intro">
+      <div><h1>Vitrine Alvinegra</h1><p>Acompanhe preços e quedas reais na loja oficial.</p></div>
+      <p id="sync" role="status">Carregando catálogo…</p>
+    </div>
+    <div class="board">
+      <nav id="categories" class="tabs" aria-label="Categorias"></nav>
+      <div class="filters">
+        <input type="search" id="search" aria-label="Buscar produto" placeholder="Buscar produto, cor ou SKU">
+        <select id="size" aria-label="Tamanho"><option value="">Todos os tamanhos</option></select>
+        <select id="offer" aria-label="Tipo de oferta">
+          <option value="stock">Em estoque</option>
+          <option value="discount">Em promoção</option>
+          <option value="drop">Quedas reais</option>
+          <option value="favorites">Favoritos</option>
+          <option value="out">Indisponíveis</option>
+        </select>
+        <select id="sort" aria-label="Ordenar">
+          <option value="featured">Destaques</option>
+          <option value="cheap">Menor preço</option>
+          <option value="name">Nome</option>
+        </select>
+      </div>
+      <div class="section-head"><h2 id="sectionTitle">Todos os produtos</h2><p id="count" aria-live="polite"></p></div>
+      <div class="grid" id="products"></div>
+      <nav id="pagination" aria-label="Páginas" hidden>
+        <button type="button" class="pill" id="prev">Anterior</button><small id="pageLabel"></small>
+        <button type="button" class="pill" id="next">Próxima</button>
+      </nav>
+    </div>
+  </main>
+  <footer class="shell">Preços da oferta. A loja calcula frete, cupons, benefícios e personalizações.</footer>
+
+  <dialog id="detail" aria-labelledby="detailTitle">
+    <div class="dialog-top"><span>Oferta na loja</span><form method="dialog"><button aria-label="Fechar produto">Fechar</button></form></div>
+    <div class="detail-layout">
+      <div id="detailImage" class="detail-image"></div>
+      <div class="detail-info">
+        <h2 id="detailTitle"></h2><p id="variantCount"></p>
+        <span class="variant-label" id="sizeLabel">Tamanho</span>
+        <div id="sizes" class="sizes" role="group" aria-labelledby="sizeLabel"></div>
+        <p id="variantMeta"></p>
+        <div class="detail-price"><strong id="currentPrice"></strong><span id="referencePrice"></span></div>
+        <div id="metrics" class="metrics"></div>
+        <div class="detail-actions">
+          <a id="openShop" class="pill solid" target="_blank" rel="noopener noreferrer">Ver na loja ↗</a>
+          <a id="share" class="pill" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  </dialog>
+<script>
+const $ = id => document.getElementById(id);
+const brl = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
+const percent = new Intl.NumberFormat('pt-BR', { maximumFractionDigits:1 });
+const collator = new Intl.Collator('pt-BR', { numeric:true, sensitivity:'base' });
+const clean = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const money = cents => brl.format(cents / 100);
+const pct = value => percent.format(value) + '%';
+const stocked = item => item.available && item.price > 0;
+const sizeOf = item => item.size || 'Único';
+const shelves = ['Todos os produtos', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
+const sizesInOrder = ['PP','P','M','G','GG','XG','2GG','3GG','4GG','5GG','6GG'];
+const pageSize = 24;
+let shelf = shelves[0];
+let page = 1;
+let groups = [];
+let loaded = false;
+let favorites = new Set();
+try { favorites = new Set(JSON.parse(localStorage.getItem('radar-botafogo-favoritos') || '[]')); } catch {}
+
+function element(tag, value, className) {
+  const node = document.createElement(tag);
+  if (value !== undefined) node.textContent = value;
+  if (className) node.className = className;
+  return node;
+}
+
+function httpsUrl(value, shopOnly = false) {
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'https:' && (!shopOnly || url.hostname === 'store.botafogo.com.br')) return url.href;
+  } catch {}
+  return '';
+}
+
+function photo(image) {
+  const url = httpsUrl(image);
+  if (!url) return element('small', 'Sem foto', 'missing');
+  const img = element('img');
+  img.alt = '';
+  img.src = url;
+  img.loading = 'lazy';
+  img.onerror = () => img.replaceWith(element('small', 'Imagem indisponível', 'missing'));
+  return img;
+}
+
+function categoryFor(items) {
+  const paths = clean(items.flatMap(item => item.categories || []).join(' '));
+  const name = clean(items[0].name);
+  if (/outlet|liquidacao/.test(paths)) return 'Outlet';
+  if (/treino|viagem/.test(paths + ' ' + name)) return 'Treino e viagem';
+  if (/linha oficial|uniforme|camisa.*(home|away|third|jogador|torcedor)/.test(paths + ' ' + name)) return 'Linha oficial';
+  if (/acessorio|chaveiro|caneca|copo|bone|bandeira/.test(paths + ' ' + name)) return 'Acessórios';
+  return 'Coleções';
+}
+
+function groupCatalog(items) {
+  const byProduct = new Map();
+  for (const item of items) {
+    if (!byProduct.has(item.product)) byProduct.set(item.product, []);
+    byProduct.get(item.product).push(item);
+  }
+  return Array.from(byProduct, ([id, variants]) => ({ id, variants, category:categoryFor(variants) }));
+}
+
+function eligible(item, group, mode, size, query) {
+  if (mode === 'out' ? stocked(item) : mode !== 'favorites' && !stocked(item)) return false;
+  if (mode === 'discount' && (item.stale || !item.announced_saving)) return false;
+  if (mode === 'drop' && (item.stale || item.event !== 'drop')) return false;
+  if (mode === 'favorites' && !favorites.has(group.id)) return false;
+  if (size && sizeOf(item) !== size) return false;
+  return !query || clean([item.name, item.color, sizeOf(item), item.sku].join(' ')).includes(query);
+}
+
+function currentGroups() {
+  const mode = $('offer').value;
+  const size = $('size').value;
+  const query = clean($('search').value.trim());
+  const sort = $('sort').value;
+  const result = [];
+  for (const group of groups) {
+    if (shelf !== shelves[0] && group.category !== shelf) continue;
+    const matches = group.variants.filter(item => eligible(item, group, mode, size, query));
+    if (!matches.length) continue;
+    matches.sort((a,b) => Number(stocked(b)) - Number(stocked(a)) || Number(a.stale) - Number(b.stale) || a.price - b.price);
+    const best = matches[0];
+    const drop = Math.max(...matches.map(item => !item.stale && item.event === 'drop' ? item.additional_pct : 0));
+    result.push({ ...group, matches, best, drop });
+  }
+  return result.sort((a,b) => {
+    if (sort === 'name') return collator.compare(a.best.name,b.best.name);
+    if (sort === 'cheap') return Number(stocked(b.best)) - Number(stocked(a.best)) || a.best.price - b.best.price;
+    return b.drop - a.drop
+      || (b.best.stale ? 0 : b.best.announced_pct) - (a.best.stale ? 0 : a.best.announced_pct)
+      || collator.compare(a.best.name,b.best.name);
+  });
+}
+
+function renderCategories() {
+  $('categories').replaceChildren(...shelves.map(label => {
+    const tab = element('button',label,'pill');
+    tab.type = 'button';
+    tab.setAttribute('aria-pressed',String(label === shelf));
+    tab.onclick = () => {
+      shelf = label;
+      for (const control of $('categories').children) control.setAttribute('aria-pressed', String(control === tab));
+      resetPage();
+    };
+    return tab;
+  }));
+}
+
+function render() {
+  if (!loaded) return;
+  const results = currentGroups();
+  const pages = Math.max(1,Math.ceil(results.length / pageSize));
+  page = Math.min(page,pages);
+  $('sectionTitle').textContent = shelf;
+  $('count').textContent = results.length + (results.length === 1 ? ' produto' : ' produtos');
+  $('pagination').hidden = pages === 1;
+  $('prev').disabled = page === 1;
+  $('next').disabled = page === pages;
+  $('pageLabel').textContent = 'Página ' + page + ' de ' + pages;
+  const offset = (page - 1) * pageSize;
+  $('products').replaceChildren(...results.slice(offset,offset + pageSize).map(card));
+  if (!results.length) $('products').append(element('p','Nenhum produto corresponde aos filtros.','empty'));
+}
+
+function card(group) {
+  const item = group.best;
+  const product = element('article',undefined,'card');
+  const image = element('button',undefined,'photo');
+  image.type = 'button';
+  image.setAttribute('aria-label','Ver tamanhos de ' + item.name);
+  image.setAttribute('aria-haspopup','dialog');
+  image.append(photo(item.image || group.variants.find(variant => variant.image)?.image));
+  image.onclick = () => openDetail(group);
+  if (group.drop) image.append(element('span','Queda real','flag'));
+  else if (!item.stale && stocked(item) && item.announced_pct > 0) image.append(element('span','−' + pct(item.announced_pct),'flag sale'));
+  const favorite = element('button',undefined,'favorite');
+  favorite.type = 'button';
+  const updateFavorite = () => {
+    const active = favorites.has(group.id);
+    favorite.textContent = active ? '♥' : '♡';
+    favorite.setAttribute('aria-pressed',String(active));
+    favorite.setAttribute('aria-label','Favoritar ' + item.name);
+  };
+  updateFavorite();
+  favorite.onclick = () => {
+    if (favorites.has(group.id)) favorites.delete(group.id);
+    else favorites.add(group.id);
+    try { localStorage.setItem('radar-botafogo-favoritos',JSON.stringify([...favorites])); } catch {}
+    if ($('offer').value === 'favorites') render();
+    else updateFavorite();
+  };
+  const body = element('div',undefined,'card-body');
+  const title = element('button',item.name,'product-title');
+  title.setAttribute('aria-haspopup','dialog');
+  title.onclick = () => openDetail(group);
+  const count = new Set(group.variants.map(sizeOf)).size;
+  const label = count > 1 ? count + ' tamanhos' : 'Tamanho ' + sizeOf(item);
+  const meta = label + (item.stale ? ' · preço anterior' : '');
+  const price = element('button',undefined,'price-button');
+  price.setAttribute('aria-haspopup','dialog');
+  if (stocked(item)) {
+    if (group.matches.some(other => stocked(other) && other.price !== item.price && other.stale === item.stale)) {
+      price.append(element('small','A partir de'));
+    }
+    price.append(document.createTextNode(money(item.price)));
+  } else price.textContent = 'Sem estoque';
+  price.onclick = () => openDetail(group);
+  body.append(title,element('small',meta,'card-meta'),price);
+  product.append(image,favorite,body);
+  return product;
+}
+
+function openDetail(group) {
+  const rank = item => {
+    const index = sizesInOrder.indexOf(sizeOf(item).toUpperCase());
+    return index < 0 ? sizesInOrder.length : index;
+  };
+  const variants = [...group.variants].sort((a,b) => rank(a) - rank(b) || collator.compare(sizeOf(a),sizeOf(b)) || a.price - b.price);
+  const counts = new Map();
+  for (const item of variants) counts.set(sizeOf(item),(counts.get(sizeOf(item)) || 0) + 1);
+  $('detailTitle').textContent = group.best.name;
+  const available = variants.filter(stocked).length;
+  $('variantCount').textContent = available + ' de ' + variants.length + ' variações em estoque';
+  const buttons = variants.map(item => {
+    const label = counts.get(sizeOf(item)) > 1 ? [sizeOf(item), item.color, 'SKU ' + item.sku, 'vend. ' + item.seller].filter(Boolean).join(' · ') : sizeOf(item);
+    const button = element('button',label,'pill' + (stocked(item) ? '' : ' unavailable'));
+    button.type = 'button';
+    button.onclick = () => select(item);
+    return button;
+  });
+  function select(item) {
+    buttons.forEach((button,index) => button.setAttribute('aria-pressed',String(variants[index] === item)));
+    showOffer(item);
+  }
+  $('sizes').replaceChildren(...buttons);
+  select(group.best);
+  $('detail').showModal();
+}
+
+function showOffer(item) {
+  $('detailImage').replaceChildren(photo(item.image));
+  $('variantMeta').textContent = [item.color, 'SKU ' + item.sku, 'Vendedor ' + item.seller].filter(Boolean).join(' · ');
+  $('currentPrice').textContent = stocked(item) ? money(item.price) : 'Indisponível';
+  $('referencePrice').textContent = item.list_price > 0 ? 'Referência ' + money(item.list_price) : '';
+  const metrics = [];
+  if (stocked(item) && item.announced_saving > 0) metrics.push('Desconto anunciado de ' + pct(item.announced_pct) + ' · ' + money(item.announced_saving));
+  if (item.previous > 0) metrics.push('Preço anterior ' + money(item.previous));
+  if (item.event === 'drop' && !item.stale) {
+    const wasDiscounted = item.previous_reference > item.previous;
+    const previous = wasDiscounted
+      ? 'Já estava em promoção de ' + money(item.previous_reference) + ' por ' + money(item.previous) + '. '
+      : '';
+    metrics.push(previous + 'Queda adicional de ' + money(item.additional_saving) + ' (' + pct(item.additional_pct) + ').');
+  }
+  if (item.event === 'restock') metrics.push('Reposição de estoque observada.');
+  if (item.event === 'first') metrics.push('Primeira leitura registrada.');
+  if (item.low > 0) metrics.push('Menor preço em 30 dias ' + money(item.low));
+  if (item.stale) metrics.push('Última leitura em ' + formatDate(item.observed_at) + '. Oferta sem confirmação na rodada mais recente.');
+  $('metrics').replaceChildren(...metrics.map(line => element('p',line)));
+  $('metrics').hidden = !metrics.length;
+  const link = httpsUrl(item.link,true);
+  $('openShop').hidden = !link;
+  $('openShop').href = link;
+  $('share').hidden = !link || !stocked(item) || item.stale;
+  if (!$('share').hidden) {
+    const message = [item.name, 'Tamanho ' + sizeOf(item), 'Preço atual ' + money(item.price), ...metrics, link].join('\n');
+    $('share').href = 'https://wa.me/?text=' + encodeURIComponent(message);
+  }
+}
+
+function formatDate(value) {
+  return new Date(value).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'});
+}
+
+function resetPage() {
+  page = 1;
+  render();
+}
+
+async function loadCatalog() {
+  try {
+    const response = await fetch('./catalogo.json',{cache:'no-cache'});
+    if (!response.ok) throw Error('Falha na leitura do catálogo');
+    const payload = await response.json();
+    if (payload.schema_version !== 1 || !Array.isArray(payload.items) || !payload.run) throw Error('Catálogo incompatível');
+    groups = groupCatalog(payload.items);
+    const options = [...new Set(payload.items.map(sizeOf))].sort(collator.compare);
+    for (const size of options) $('size').append(new Option(size,size));
+    const description = payload.run.status === 'partial' ? ' · coleta parcial' : '';
+    $('sync').textContent = 'Leitura de ' + formatDate(payload.run.at) + description;
+    loaded = true;
+    render();
+  } catch {
+    $('sync').textContent = 'Catálogo indisponível';
+    $('products').replaceChildren(element('p','Não foi possível carregar os preços. Atualize a página para tentar novamente.','empty'));
+  }
+}
+
+$('search').oninput = resetPage;
+for (const id of ['size','offer','sort']) $(id).onchange = resetPage;
+$('prev').onclick = () => { page--; render(); $('sectionTitle').scrollIntoView({block:'start'}); };
+$('next').onclick = () => { page++; render(); $('sectionTitle').scrollIntoView({block:'start'}); };
+renderCategories();
+loadCatalog();
+</script>
+</body>
+</html>

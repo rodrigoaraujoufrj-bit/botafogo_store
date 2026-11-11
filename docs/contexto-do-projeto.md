@@ -28,9 +28,9 @@ Por exemplo, uma camisa tinha referência de R$ 399,99 e custava R$ 299,99. Na r
 | Coletor e banco | Implementados na instalação local. Python consulta o catálogo VTEX e grava no schema `botafogo` do PostgreSQL. As tabelas `observations` e `runs` sustentam a lista e o histórico. |
 | Agendamento | Tarefas do Windows foram registradas e uma rodada automática foi confirmada durante a instalação. Para checar a situação atual, consulte o Agendador e `botafogo.runs`. |
 | Painel em uso | O servidor local serve `painel.html` em `http://127.0.0.1:8765/`. A versão instalada foi validada com a API local. |
-| Vitrine com cartões agrupados | Revisão de HTML preparada à parte. Agrupamento, seleção de tamanho e abertura de variações foram testados com dados simulados. A instalação e a revisão visual no navegador ainda não foram confirmadas. |
-| GitHub | Este repositório contém a documentação. Os scripts, o HTML e o banco ficam na instalação local. |
-| Hospedagem | A decisão de operação é acesso local. GitHub Pages foi discutido como uma possível vitrine estática alimentada por exportação do catálogo. Vercel também foi avaliada. |
+| Vitrine com cartões agrupados | O `index.html` público agrupa ofertas por produto. A ficha abre tamanhos e preços por variação. O visual usa preto, branco e cinza, com cartões arredondados e abas em pílula. |
+| GitHub | O repositório contém a documentação, o `index.html` e uma exportação pública em `catalogo.json`. Os scripts, as preferências e as tabelas do PostgreSQL ficam na instalação local. |
+| Hospedagem | A vitrine pública roda no GitHub Pages. A coleta e a administração continuam no Windows. Com a máquina desligada, o site exibe a última exportação. |
 
 ## Onde continuar
 

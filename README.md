@@ -2,7 +2,7 @@
 
 Monitor local de preços da [loja oficial do Botafogo](https://store.botafogo.com.br/). A coleta consulta o catálogo VTEX, registra preços e estoque no PostgreSQL e mantém o histórico por produto, SKU e vendedor. O painel abre no Chrome em [http://127.0.0.1:8765/](http://127.0.0.1:8765/) no computador em que o monitor está em execução.
 
-Este repositório reúne a documentação. Os scripts e o painel descritos aqui estão na instalação local do Monitor-Botafogo.
+O [Radar no GitHub Pages](https://rodrigoaraujoufrj-bit.github.io/botafogo_store/) exibe a vitrine pública. Ela lê `catalogo.json`, atualizado pelo Monitor-Botafogo após rodadas que gravam ofertas. Os scripts de coleta e o painel administrativo rodam na instalação local.
 
 ## Intuito do projeto
 
@@ -15,7 +15,7 @@ Para retomar o projeto com outra IA, comece pelo [contexto do projeto](docs/cont
 | [Contexto do projeto](docs/contexto-do-projeto.md) | Intuito, requisitos da vitrine, decisões e estado da implementação |
 | [Operação no Windows](docs/operacao-local.md) | Requisitos, inicialização, configuração, coleta de duas em duas horas, diagnóstico e testes |
 | [Banco, coleta e API](docs/banco-e-coleta.md) | Tabelas, consulta final, regras de preços, histórico e rotas locais |
-| [Painel e GitHub Pages](docs/painel-e-pages.md) | Edição do HTML, vitrine agrupada e proposta de publicação estática |
+| [Painel e GitHub Pages](docs/painel-e-pages.md) | Edição do HTML, vitrine agrupada e sincronização do catálogo |
 
 ## Fluxo dos dados
 
@@ -26,6 +26,8 @@ flowchart LR
     Coletor --> PG["PostgreSQL · schema botafogo"]
     PG --> API["API local em Python"]
     API --> Chrome["Painel no Chrome"]
+    PG --> Exportador["Exportação após a rodada"]
+    Exportador --> Pages["GitHub Pages · catálogo público"]
     Chrome -->|Verificar preços| API
     API --> Coletor
 ```

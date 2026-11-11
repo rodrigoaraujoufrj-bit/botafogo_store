@@ -18,17 +18,17 @@ O servidor substitui `__TOKEN__` ao servir o HTML. Preserve o marcador para que 
 
 ## Vitrine agrupada
 
-A revisão visual foi preparada como um HTML separado para a instalação local. O desenho reúne as ofertas em **um cartão por produto**. O cartão mostra o menor preço elegível para os filtros atuais e abre tamanhos, cores, disponibilidade, preços e ações por variação. Assim, ao escolher tamanho M, o preço mostrado no cartão vem de uma oferta M. O histórico continua identificado por produto, SKU e vendedor.
+A vitrine do GitHub Pages está em `index.html`. Ela reúne as ofertas em **um cartão por produto**. O cartão destaca o menor preço elegível da rodada mais recente e abre tamanhos, cores, disponibilidade, preços e ações por variação. Ao escolher tamanho M, o preço mostrado no cartão vem de uma oferta M. O detalhe mostra preço anterior e mínimo em 30 dias quando disponíveis. A série completa de observações pode ser consultada no painel local.
 
-O separador alvinegro e as abas de categorias se inspiram na Botafogo Store. O agrupamento por categoria usa os caminhos disponíveis no catálogo e complementa a classificação pelo nome quando necessário. [Referência visual da loja](https://store.botafogo.com.br/)
+O visual usa preto, branco e cinza, cartões arredondados, abas em pílula e fotos da loja. O agrupamento por categoria usa os caminhos disponíveis no catálogo e complementa a classificação pelo nome quando necessário. Favoritos da vitrine são salvos no navegador. [Referência visual da loja](https://store.botafogo.com.br/)
 
-## Proposta para GitHub Pages
+## Sincronização com GitHub Pages
 
-GitHub Pages hospeda HTML, CSS e JavaScript estáticos. Uma versão pública poderia servir **um HTML editável e um arquivo de dados exportado**, como `catalogo.json`, atualizado por um processo de coleta. O banco e o coletor continuam do lado do produtor dos dados. [Como funciona o GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
+O [site público](https://rodrigoaraujoufrj-bit.github.io/botafogo_store/) carrega `./catalogo.json` pelo caminho relativo. O arquivo tem a versão do formato, a rodada, o estado de cobertura e as ofertas por produto, SKU e vendedor. [Como funciona o GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
 
-1. Gerar `catalogo.json` com os produtos, variações e ofertas selecionadas, incluindo a hora da observação, a referência e o estado de cobertura. Para disponibilizar histórico público, exportar os dados necessários em um arquivo separado ou por produto.
-2. Adaptar o JavaScript para ler o arquivo por caminho relativo. Um site de projeto geralmente fica sob `/botafogo_store/`. Os caminhos relativos funcionam nesse endereço e numa prévia local.
-3. Publicar os arquivos gerados e indicar a última atualização no painel. Uma coleta local pode enviar novas exportações quando a máquina estiver ligada. Para atualizar com o computador desligado, o coletor ou o processo de exportação precisa rodar em outro ambiente.
-4. Definir se a versão pública é somente de consulta. Metas e favoritos compartilhados, coleta sob demanda e histórico consultado ao vivo exigem uma API própria. Para favoritos individuais, o navegador pode guardar preferências localmente.
+1. A coleta do Radar grava as observações no PostgreSQL. Rodadas completas ou parciais com ofertas disparam a exportação para `main` pela chave SSH da conta Windows.
+2. O exportador muda somente `catalogo.json` e preserva o restante da branch. A hora exibida no site é a da coleta. A atualização do Pages pode levar alguns minutos depois do commit.
+3. Para reenviar a última rodada com ofertas, execute `pwsh -NoProfile -File .\Iniciar.ps1 -PublishOnly -NoBrowser` na pasta local. Consulte `publicacao.log` para ver o número da rodada, o commit ou a causa de falha.
+4. Quando a máquina está desligada ou a coleta falha, a página continua exibindo o último catálogo publicado. A tarefa automática retoma a exportação na próxima rodada que grave ofertas.
 
-O repositório é público. Publique somente os campos de catálogo e histórico escolhidos para exposição. Credenciais, tokens, configurações pessoais e dumps do PostgreSQL ficam fora da exportação.
+O repositório é público. A exportação inclui dados das ofertas e métricas derivadas. Credenciais, preferências locais, mensagens personalizadas e dumps do PostgreSQL ficam fora do arquivo público.
