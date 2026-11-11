@@ -22,6 +22,8 @@ A vitrine do GitHub Pages está em `index.html`. Ela reúne as ofertas em **um c
 
 O visual usa preto, branco e cinza, cartões arredondados, abas em pílula e fotos da loja. O agrupamento por categoria usa os caminhos disponíveis no catálogo e complementa a classificação pelo nome quando necessário. Favoritos da vitrine são salvos no navegador. [Referência visual da loja](https://store.botafogo.com.br/)
 
+Ofertas **Mizuno 26/27 com desconto anunciado de 50% ou mais** ocupam o primeiro destaque e aparecem primeiro na ordenação por Destaques. O filtro **Mizuno 26/27 · 50% ou mais** reúne todas as variações que atendem ao critério de preço e estoque. A vitrine reconhece a marca como Mizuno ou Mzn e identifica a temporada no nome, endereço ou categorias do produto.
+
 ## Sincronização com GitHub Pages
 
 O [site público](https://rodrigoaraujoufrj-bit.github.io/botafogo_store/) carrega `catalogo.json`. Quando o HTML é aberto como arquivo local, ele usa o endereço público do catálogo. Se a primeira fonte falhar, tenta o arquivo diretamente no GitHub. O catálogo tem a versão do formato, a rodada, o estado de cobertura e as ofertas por produto, SKU e vendedor. O campo `previous_historical_low` contém o menor preço positivo anterior observado em estoque para a mesma oferta. Ele é nulo na primeira leitura válida. [Como funciona o GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)

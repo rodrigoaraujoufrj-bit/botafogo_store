@@ -45,6 +45,9 @@
     .highlight-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .highlight-card { display:grid; grid-template-columns:76px minmax(0,1fr); gap:10px; align-items:center; padding:7px; width:100%; border:1px solid #262626; border-radius:15px; background:#1b1b1b; color:#fff; text-align:left; }
     .highlight-card:hover { background:#353535; }
+    .highlight-card.priority { grid-column:1/-1; grid-template-columns:96px minmax(0,1fr); gap:14px; background:#090909; }
+    .highlight-card.priority:hover { background:#282828; }
+    .highlight-card.priority .highlight-copy strong { font-size:17px; }
     .highlight-card .photo { border-radius:9px; }
     .highlight-copy { display:grid; gap:2px; padding-right:4px; }
     .highlight-copy small { color:#e2e2e2; font-size:10px; font-weight:750; }
@@ -121,6 +124,8 @@
       .detail-image { aspect-ratio:5/4; }
       .highlight-card { grid-template-columns:54px minmax(0,1fr); gap:6px; }
       .highlight-copy strong { font-size:12px; }
+      .highlight-card.priority { grid-template-columns:68px minmax(0,1fr); gap:9px; }
+      .highlight-card.priority .highlight-copy strong { font-size:14px; }
     }
     @media (max-width:380px) { .highlight-grid { grid-template-columns:1fr; } }
     @media (prefers-reduced-motion:reduce) { .photo img { transition:none; } }
@@ -147,6 +152,7 @@
         <select id="size" aria-label="Tamanho"><option value="">Todos os tamanhos</option></select>
         <select id="offer" aria-label="Tipo de oferta">
           <option value="stock">Em estoque</option>
+          <option value="mizuno50">Mizuno 26/27 · 50% ou mais</option>
           <option value="discount">Em promoção</option>
           <option value="drop">Quedas reais</option>
           <option value="record">Menor preço histórico</option>
@@ -260,12 +266,20 @@ function groupCatalog(items) {
 
 function eligible(item, group, mode, size, query) {
   if (mode === 'out' ? stocked(item) : mode !== 'favorites' && !stocked(item)) return false;
+  if (mode === 'mizuno50' && !isMizunoPromotion(item)) return false;
   if (mode === 'discount' && (item.stale || !item.announced_saving)) return false;
   if (mode === 'drop' && (item.stale || item.event !== 'drop')) return false;
   if (mode === 'record' && !atHistoricalLow(item)) return false;
   if (mode === 'favorites' && !favorites.has(group.id)) return false;
   if (size && sizeOf(item) !== size) return false;
   return !query || clean([item.name, item.color, sizeOf(item), item.sku].join(' ')).includes(query);
+}
+
+function isMizunoPromotion(item) {
+  if (!stocked(item) || item.stale || !(item.announced_pct >= 50) || !(item.announced_saving > 0)) return false;
+  const description = clean([item.name, item.link, ...(item.categories || [])].join(' '));
+  return /\b(?:mizuno|mzn)\b/.test(description)
+    && /\b(?:20)?26\s*[\/_.–-]\s*(?:20)?27\b/.test(description);
 }
 
 function currentGroups() {
@@ -281,12 +295,13 @@ function currentGroups() {
     matches.sort((a,b) => Number(stocked(b)) - Number(stocked(a)) || Number(a.stale) - Number(b.stale) || a.price - b.price);
     const best = matches[0];
     const drop = Math.max(...matches.map(item => !item.stale && item.event === 'drop' ? item.additional_pct : 0));
-    result.push({ ...group, matches, best, drop });
+    const priority = matches.some(isMizunoPromotion);
+    result.push({ ...group, matches, best, drop, priority });
   }
   return result.sort((a,b) => {
     if (sort === 'name') return collator.compare(a.best.name,b.best.name);
     if (sort === 'cheap') return Number(stocked(b.best)) - Number(stocked(a.best)) || a.best.price - b.best.price;
-    return b.drop - a.drop
+    return Number(b.priority) - Number(a.priority) || b.drop - a.drop
       || (b.best.stale ? 0 : b.best.announced_pct) - (a.best.stale ? 0 : a.best.announced_pct)
       || collator.compare(a.best.name,b.best.name);
   });
@@ -320,22 +335,35 @@ function render() {
   const offset = (page - 1) * pageSize;
   renderHighlights(results);
   $('products').replaceChildren(...results.slice(offset,offset + pageSize).map(card));
-  if (!results.length) $('products').append(element('p','Nenhum produto corresponde aos filtros.','empty'));
+  if (!results.length) {
+    const message = $('offer').value === 'mizuno50'
+      ? 'Nenhuma oferta Mizuno 26/27 com desconto de 50% ou mais corresponde aos filtros.'
+      : 'Nenhum produto corresponde aos filtros.';
+    $('products').append(element('p',message,'empty'));
+  }
 }
 
 function renderHighlights(results) {
   const candidates = results.flatMap(group => group.matches
     .filter(item => stocked(item) && !item.stale)
     .map(item => ({group,item})));
-  const discount = candidates.filter(({item}) => item.announced_pct >= 30)
-    .sort((a,b) => b.item.announced_pct - a.item.announced_pct || b.item.announced_saving - a.item.announced_saving)[0];
+  const offersByDiscount = candidates.filter(({item}) => item.announced_pct >= 30)
+    .sort((a,b) => b.item.announced_pct - a.item.announced_pct || b.item.announced_saving - a.item.announced_saving);
+  const mizuno = offersByDiscount.find(({item}) => isMizunoPromotion(item));
+  const discount = offersByDiscount.find(({group}) => group.id !== mizuno?.group.id);
   const records = candidates.filter(({item}) => atHistoricalLow(item))
     .sort((a,b) => (b.item.previous_historical_low - b.item.price) - (a.item.previous_historical_low - a.item.price)
       || b.item.announced_pct - a.item.announced_pct || a.item.price - b.item.price);
-  const record = records.find(({group}) => group.id !== discount?.group.id);
+  const record = records.find(({group}) => group.id !== mizuno?.group.id && group.id !== discount?.group.id);
   const cards = [];
+  if (mizuno) {
+    const label = atHistoricalLow(mizuno.item) ? 'Mizuno 26/27 · mínimo histórico' : 'Mizuno 26/27';
+    const detail = '−' + pct(mizuno.item.announced_pct) + ' · tamanho ' + sizeOf(mizuno.item);
+    cards.push(highlightCard(mizuno,label,detail,true));
+  }
   if (discount) {
-    const label = atHistoricalLow(discount.item) ? 'Maior desconto · mínimo histórico' : 'Maior desconto';
+    const headline = mizuno ? 'Outro destaque de desconto' : 'Maior desconto';
+    const label = atHistoricalLow(discount.item) ? headline + ' · mínimo histórico' : headline;
     cards.push(highlightCard(discount, label, '−' + pct(discount.item.announced_pct)));
   }
   if (record) {
@@ -346,8 +374,8 @@ function renderHighlights(results) {
   $('highlightCards').replaceChildren(...cards);
 }
 
-function highlightCard({group,item}, label, detail) {
-  const button = element('button',undefined,'highlight-card');
+function highlightCard({group,item}, label, detail, priority = false) {
+  const button = element('button',undefined,'highlight-card' + (priority ? ' priority' : ''));
   button.type = 'button';
   button.setAttribute('aria-haspopup','dialog');
   const image = element('span',undefined,'photo');
@@ -369,7 +397,8 @@ function card(group) {
   image.setAttribute('aria-haspopup','dialog');
   image.append(photo(item.image || group.variants.find(variant => variant.image)?.image));
   image.onclick = () => openDetail(group);
-  if (atHistoricalLow(item)) image.append(element('span','Mínimo histórico','flag'));
+  if (isMizunoPromotion(item)) image.append(element('span','−' + pct(item.announced_pct),'flag'));
+  else if (atHistoricalLow(item)) image.append(element('span','Mínimo histórico','flag'));
   else if (group.drop) image.append(element('span','Queda real','flag'));
   else if (!item.stale && stocked(item) && item.announced_pct > 0) image.append(element('span','−' + pct(item.announced_pct),'flag sale'));
   const favorite = element('button',undefined,'favorite');
