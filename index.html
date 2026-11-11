@@ -80,6 +80,9 @@
     .card-body { display:grid; gap:7px; padding:10px 5px 6px; flex:1; }
     .product-title { display:block; width:100%; text-align:left; align-self:start; background:none; border:0; padding:0; min-height:2.6em; font-weight:750; line-height:1.28; overflow-wrap:anywhere; }
     .card-meta { font-size:11px; color:var(--muted); }
+    .discount-callout { display:grid; gap:3px; align-content:center; padding:9px 10px; background:#171717; color:#fff; border-radius:10px; }
+    .discount-callout strong { font-size:clamp(20px,2.8vw,30px); line-height:1; letter-spacing:-.055em; }
+    .discount-callout span { font-size:11px; font-weight:800; line-height:1.2; }
     .price-button { align-self:end; display:flex; justify-content:center; align-items:baseline; gap:4px; flex-wrap:wrap; width:100%; border:1px solid #272727; background:#fff; border-radius:999px; padding:6px 5px; font-size:13px; font-weight:800; }
     .price-button:hover { background:#171717; color:#fff; }
     .price-button small { font-size:10px; font-weight:500; }
@@ -435,6 +438,7 @@ function highlightCard({group,item}, label, detail, priority = false) {
 function card(group) {
   const item = group.best;
   const byDiscount = $('sort').value === 'discount';
+  const discount = byDiscount ? announcedDiscount(item) : 0;
   const product = element('article',undefined,'card');
   const image = element('button',undefined,'photo');
   image.type = 'button';
@@ -442,11 +446,10 @@ function card(group) {
   image.setAttribute('aria-haspopup','dialog');
   image.append(photo(item.image || group.variants.find(variant => variant.image)?.image));
   image.onclick = () => openDetail(group);
-  if (isMizunoPromotion(item)) image.append(element('span','−' + pct(item.announced_pct),'flag'));
-  else if (byDiscount && announcedDiscount(item)) image.append(element('span','−' + pct(announcedDiscount(item)),'flag sale'));
+  if (!discount && isMizunoPromotion(item)) image.append(element('span','−' + pct(item.announced_pct),'flag'));
   else if (atHistoricalLow(item)) image.append(element('span','Mínimo histórico','flag'));
   else if (group.drop) image.append(element('span','Queda real','flag'));
-  else if (!item.stale && stocked(item) && item.announced_pct > 0) image.append(element('span','−' + pct(item.announced_pct),'flag sale'));
+  else if (!discount && !item.stale && stocked(item) && item.announced_pct > 0) image.append(element('span','−' + pct(item.announced_pct),'flag sale'));
   if (blackFireProducts.has(String(item.product))) image.append(element('span','🔥 Black Fire','flag black-fire'));
   const favorite = element('button',undefined,'favorite');
   favorite.type = 'button';
@@ -480,7 +483,13 @@ function card(group) {
     price.append(document.createTextNode(money(item.price)));
   } else price.textContent = 'Sem estoque';
   price.onclick = () => openDetail(group);
-  body.append(title,element('small',meta,'card-meta'),price);
+  body.append(title,element('small',meta,'card-meta'));
+  if (discount) {
+    const callout = element('div',undefined,'discount-callout');
+    callout.append(element('strong',pct(discount) + ' OFF'),element('span','ECONOMIZE ' + money(item.announced_saving)));
+    body.append(callout);
+  }
+  body.append(price);
   product.append(image,favorite,body);
   return product;
 }
