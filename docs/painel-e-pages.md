@@ -18,13 +18,13 @@ O servidor substitui `__TOKEN__` ao servir o HTML. Preserve o marcador para que 
 
 ## Vitrine agrupada
 
-A vitrine do GitHub Pages está em `index.html`. Ela reúne as ofertas em **um cartão por produto**. O cartão destaca o menor preço elegível da rodada mais recente e abre tamanhos, cores, disponibilidade, preços e ações por variação. Ao escolher tamanho M, o preço mostrado no cartão vem de uma oferta M. O detalhe mostra preço anterior e mínimo em 30 dias quando disponíveis. A série completa de observações pode ser consultada no painel local.
+A vitrine do GitHub Pages está em `index.html`. Ela reúne as ofertas em **um cartão por produto**. O cartão destaca o menor preço elegível da rodada mais recente e abre tamanhos, cores, disponibilidade, preços e ações por variação. Ao escolher tamanho M, o preço mostrado no cartão vem de uma oferta M. A seção **Destaques** mostra o maior desconto anunciado a partir de 30% e uma oferta que igualou ou bateu seu mínimo histórico. Cada destaque abre a variação que gerou o preço exibido. A série completa de observações pode ser consultada no painel local.
 
 O visual usa preto, branco e cinza, cartões arredondados, abas em pílula e fotos da loja. O agrupamento por categoria usa os caminhos disponíveis no catálogo e complementa a classificação pelo nome quando necessário. Favoritos da vitrine são salvos no navegador. [Referência visual da loja](https://store.botafogo.com.br/)
 
 ## Sincronização com GitHub Pages
 
-O [site público](https://rodrigoaraujoufrj-bit.github.io/botafogo_store/) carrega `./catalogo.json` pelo caminho relativo. O arquivo tem a versão do formato, a rodada, o estado de cobertura e as ofertas por produto, SKU e vendedor. [Como funciona o GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
+O [site público](https://rodrigoaraujoufrj-bit.github.io/botafogo_store/) carrega `catalogo.json`. Quando o HTML é aberto como arquivo local, ele usa o endereço público do catálogo. Se a primeira fonte falhar, tenta o arquivo diretamente no GitHub. O catálogo tem a versão do formato, a rodada, o estado de cobertura e as ofertas por produto, SKU e vendedor. O campo `previous_historical_low` contém o menor preço positivo anterior observado em estoque para a mesma oferta. Ele é nulo na primeira leitura válida. [Como funciona o GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
 
 1. A coleta do Radar grava as observações no PostgreSQL. Rodadas completas ou parciais com ofertas disparam a exportação para `main` pela chave SSH da conta Windows.
 2. O exportador muda somente `catalogo.json` e preserva o restante da branch. A hora exibida no site é a da coleta. A atualização do Pages pode levar alguns minutos depois do commit.

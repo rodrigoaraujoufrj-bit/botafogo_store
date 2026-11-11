@@ -40,6 +40,17 @@
     .filters input,.filters select { background:#fff; border:1px solid var(--line); border-radius:14px; padding:9px 11px; min-width:0; min-height:41px; }
     .filters input { flex:1 1 210px; }
     .filters select { flex:0 1 auto; }
+    .highlights { margin:4px 0 21px; }
+    .highlights h2 { font-size:20px; letter-spacing:-.045em; margin:0 2px 9px; }
+    .highlight-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .highlight-card { display:grid; grid-template-columns:76px minmax(0,1fr); gap:10px; align-items:center; padding:7px; width:100%; border:1px solid #262626; border-radius:15px; background:#1b1b1b; color:#fff; text-align:left; }
+    .highlight-card:hover { background:#353535; }
+    .highlight-card .photo { border-radius:9px; }
+    .highlight-copy { display:grid; gap:2px; padding-right:4px; }
+    .highlight-copy small { color:#e2e2e2; font-size:10px; font-weight:750; }
+    .highlight-copy strong { line-height:1.3; overflow-wrap:anywhere; }
+    .highlight-copy span { font-size:12px; color:#f0f0f0; }
+    .load-error { display:grid; justify-items:start; gap:12px; }
     .section-head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin:3px 2px 13px; }
     .section-head h2 { font-size:20px; letter-spacing:-.045em; }
     #count { color:var(--muted); font-size:12px; }
@@ -108,7 +119,10 @@
       .favorite { top:10px; right:10px; width:25px; height:25px; font-size:15px; }
       .detail-layout { grid-template-columns:1fr; }
       .detail-image { aspect-ratio:5/4; }
+      .highlight-card { grid-template-columns:54px minmax(0,1fr); gap:6px; }
+      .highlight-copy strong { font-size:12px; }
     }
+    @media (max-width:380px) { .highlight-grid { grid-template-columns:1fr; } }
     @media (prefers-reduced-motion:reduce) { .photo img { transition:none; } }
   </style>
 </head>
@@ -135,6 +149,7 @@
           <option value="stock">Em estoque</option>
           <option value="discount">Em promoção</option>
           <option value="drop">Quedas reais</option>
+          <option value="record">Menor preço histórico</option>
           <option value="favorites">Favoritos</option>
           <option value="out">Indisponíveis</option>
         </select>
@@ -144,6 +159,10 @@
           <option value="name">Nome</option>
         </select>
       </div>
+      <section class="highlights" id="highlights" aria-labelledby="highlightsTitle" hidden>
+        <h2 id="highlightsTitle">Destaques</h2>
+        <div class="highlight-grid" id="highlightCards"></div>
+      </section>
       <div class="section-head"><h2 id="sectionTitle">Todos os produtos</h2><p id="count" aria-live="polite"></p></div>
       <div class="grid" id="products"></div>
       <nav id="pagination" aria-label="Páginas" hidden>
@@ -181,6 +200,8 @@ const clean = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u0
 const money = cents => brl.format(cents / 100);
 const pct = value => percent.format(value) + '%';
 const stocked = item => item.available && item.price > 0;
+const atHistoricalLow = item => stocked(item) && !item.stale
+  && item.previous_historical_low > 0 && item.price <= item.previous_historical_low;
 const sizeOf = item => item.size || 'Único';
 const shelves = ['Todos os produtos', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
 const sizesInOrder = ['PP','P','M','G','GG','XG','2GG','3GG','4GG','5GG','6GG'];
@@ -241,6 +262,7 @@ function eligible(item, group, mode, size, query) {
   if (mode === 'out' ? stocked(item) : mode !== 'favorites' && !stocked(item)) return false;
   if (mode === 'discount' && (item.stale || !item.announced_saving)) return false;
   if (mode === 'drop' && (item.stale || item.event !== 'drop')) return false;
+  if (mode === 'record' && !atHistoricalLow(item)) return false;
   if (mode === 'favorites' && !favorites.has(group.id)) return false;
   if (size && sizeOf(item) !== size) return false;
   return !query || clean([item.name, item.color, sizeOf(item), item.sku].join(' ')).includes(query);
@@ -296,8 +318,46 @@ function render() {
   $('next').disabled = page === pages;
   $('pageLabel').textContent = 'Página ' + page + ' de ' + pages;
   const offset = (page - 1) * pageSize;
+  renderHighlights(results);
   $('products').replaceChildren(...results.slice(offset,offset + pageSize).map(card));
   if (!results.length) $('products').append(element('p','Nenhum produto corresponde aos filtros.','empty'));
+}
+
+function renderHighlights(results) {
+  const candidates = results.flatMap(group => group.matches
+    .filter(item => stocked(item) && !item.stale)
+    .map(item => ({group,item})));
+  const discount = candidates.filter(({item}) => item.announced_pct >= 30)
+    .sort((a,b) => b.item.announced_pct - a.item.announced_pct || b.item.announced_saving - a.item.announced_saving)[0];
+  const records = candidates.filter(({item}) => atHistoricalLow(item))
+    .sort((a,b) => (b.item.previous_historical_low - b.item.price) - (a.item.previous_historical_low - a.item.price)
+      || b.item.announced_pct - a.item.announced_pct || a.item.price - b.item.price);
+  const record = records.find(({group}) => group.id !== discount?.group.id);
+  const cards = [];
+  if (discount) {
+    const label = atHistoricalLow(discount.item) ? 'Maior desconto · mínimo histórico' : 'Maior desconto';
+    cards.push(highlightCard(discount, label, '−' + pct(discount.item.announced_pct)));
+  }
+  if (record) {
+    const label = record.item.price < record.item.previous_historical_low ? 'Novo menor preço histórico' : 'No menor preço histórico';
+    cards.push(highlightCard(record, label, sizeOf(record.item)));
+  }
+  $('highlights').hidden = !cards.length;
+  $('highlightCards').replaceChildren(...cards);
+}
+
+function highlightCard({group,item}, label, detail) {
+  const button = element('button',undefined,'highlight-card');
+  button.type = 'button';
+  button.setAttribute('aria-haspopup','dialog');
+  const image = element('span',undefined,'photo');
+  image.append(photo(item.image));
+  const copy = element('span',undefined,'highlight-copy');
+  copy.append(element('small',label),element('strong',item.name),
+    element('span',money(item.price) + ' · ' + detail));
+  button.append(image,copy);
+  button.onclick = () => openDetail({...group,best:item});
+  return button;
 }
 
 function card(group) {
@@ -309,7 +369,8 @@ function card(group) {
   image.setAttribute('aria-haspopup','dialog');
   image.append(photo(item.image || group.variants.find(variant => variant.image)?.image));
   image.onclick = () => openDetail(group);
-  if (group.drop) image.append(element('span','Queda real','flag'));
+  if (atHistoricalLow(item)) image.append(element('span','Mínimo histórico','flag'));
+  else if (group.drop) image.append(element('span','Queda real','flag'));
   else if (!item.stale && stocked(item) && item.announced_pct > 0) image.append(element('span','−' + pct(item.announced_pct),'flag sale'));
   const favorite = element('button',undefined,'favorite');
   favorite.type = 'button';
@@ -393,6 +454,11 @@ function showOffer(item) {
   if (item.event === 'restock') metrics.push('Reposição de estoque observada.');
   if (item.event === 'first') metrics.push('Primeira leitura registrada.');
   if (item.low > 0) metrics.push('Menor preço em 30 dias ' + money(item.low));
+  if (atHistoricalLow(item)) {
+    metrics.push(item.price < item.previous_historical_low
+      ? 'Novo menor preço histórico. O mínimo anterior era ' + money(item.previous_historical_low) + '.'
+      : 'Oferta no menor preço histórico registrado.');
+  }
   if (item.stale) metrics.push('Última leitura em ' + formatDate(item.observed_at) + '. Oferta sem confirmação na rodada mais recente.');
   $('metrics').replaceChildren(...metrics.map(line => element('p',line)));
   $('metrics').hidden = !metrics.length;
@@ -415,22 +481,60 @@ function resetPage() {
   render();
 }
 
+const publishedCatalog = 'https://rodrigoaraujoufrj-bit.github.io/botafogo_store/catalogo.json';
+const repositoryCatalog = 'https://raw.githubusercontent.com/rodrigoaraujoufrj-bit/botafogo_store/main/catalogo.json';
+
+async function fetchCatalog() {
+  const sources = location.protocol === 'file:'
+    ? [publishedCatalog,repositoryCatalog]
+    : [...new Set([new URL('catalogo.json',document.baseURI).href,publishedCatalog,repositoryCatalog])];
+  let failure;
+  for (const url of sources) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(),8000);
+    try {
+      const response = await fetch(url,{cache:'no-store',signal:controller.signal});
+      if (!response.ok) throw Error('HTTP ' + response.status);
+      const payload = await response.json();
+      if (payload.schema_version !== 1 || !Array.isArray(payload.items) || !payload.items.length || !payload.run?.at) {
+        throw Error('Formato do catálogo incompatível');
+      }
+      return payload;
+    } catch (error) {
+      failure = error;
+      console.warn('Radar Botafogo · fonte do catálogo',url,error.message);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw failure;
+}
+
 async function loadCatalog() {
+  $('sync').textContent = 'Carregando catálogo…';
   try {
-    const response = await fetch('./catalogo.json',{cache:'no-cache'});
-    if (!response.ok) throw Error('Falha na leitura do catálogo');
-    const payload = await response.json();
-    if (payload.schema_version !== 1 || !Array.isArray(payload.items) || !payload.run) throw Error('Catálogo incompatível');
+    const payload = await fetchCatalog();
     groups = groupCatalog(payload.items);
-    const options = [...new Set(payload.items.map(sizeOf))].sort(collator.compare);
-    for (const size of options) $('size').append(new Option(size,size));
+    const options = [...new Set(payload.items.map(sizeOf))].sort((a,b) => collator.compare(a,b));
+    const sizeOptions = ['Todos os tamanhos',...options].map((label,index) => {
+      const option = element('option',label);
+      option.value = index ? label : '';
+      return option;
+    });
+    $('size').replaceChildren(...sizeOptions);
     const description = payload.run.status === 'partial' ? ' · coleta parcial' : '';
     $('sync').textContent = 'Leitura de ' + formatDate(payload.run.at) + description;
     loaded = true;
     render();
-  } catch {
+  } catch (error) {
+    console.error('Radar Botafogo · catálogo',error);
     $('sync').textContent = 'Catálogo indisponível';
-    $('products').replaceChildren(element('p','Não foi possível carregar os preços. Atualize a página para tentar novamente.','empty'));
+    const notice = element('div',undefined,'empty load-error');
+    const retry = element('button','Tentar novamente','pill');
+    retry.type = 'button';
+    retry.onclick = () => { retry.disabled = true; loadCatalog(); };
+    notice.append(element('p','Não foi possível carregar os preços.'),retry);
+    $('products').replaceChildren(notice);
   }
 }
 
