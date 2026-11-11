@@ -67,6 +67,10 @@
     .missing { color:var(--muted); font-size:12px; }
     .flag { position:absolute; z-index:1; top:8px; left:8px; background:#181818; color:white; border-radius:999px; padding:4px 8px; font-size:10px; font-weight:800; pointer-events:none; }
     .flag.sale { background:#fff; color:#1b1b1b; border:1px solid var(--line); }
+    .flag.black-fire { top:auto; bottom:8px; }
+    .campaign-tag { display:inline-block; width:fit-content; margin-top:8px; padding:4px 8px; background:#181818; color:#fff; border-radius:999px; font-size:11px; font-weight:800; }
+    .campaign-note { background:var(--soft); padding:9px 11px; border-radius:10px; margin:8px 0; font-size:12px; }
+    .campaign-note a { font-weight:750; }
     .favorite { position:absolute; z-index:2; right:14px; top:14px; border:0; border-radius:50%; width:31px; height:31px; display:grid; place-items:center; font-size:19px; line-height:1; background:#fff; }
     .favorite[aria-pressed=true] { background:#171717; color:white; }
     .card-body { display:grid; gap:7px; padding:10px 5px 6px; flex:1; }
@@ -147,6 +151,9 @@
     </div>
     <div class="board">
       <nav id="categories" class="tabs" aria-label="Categorias"></nav>
+      <p id="blackFireNotice" class="campaign-note" hidden>
+        Ofertas identificadas pela loja na campanha. <a href="https://store.botafogo.com.br/black-fire-2" target="_blank" rel="noopener noreferrer">Ver Black Fire na loja ↗</a>
+      </p>
       <div class="filters">
         <input type="search" id="search" aria-label="Buscar produto" placeholder="Buscar produto, cor ou SKU">
         <select id="size" aria-label="Tamanho"><option value="">Todos os tamanhos</option></select>
@@ -185,12 +192,13 @@
     <div class="detail-layout">
       <div id="detailImage" class="detail-image"></div>
       <div class="detail-info">
-        <h2 id="detailTitle"></h2><p id="variantCount"></p>
+        <h2 id="detailTitle"></h2><span id="detailBlackFire" class="campaign-tag" hidden>🔥 Black Fire</span><p id="variantCount"></p>
         <span class="variant-label" id="sizeLabel">Tamanho</span>
         <div id="sizes" class="sizes" role="group" aria-labelledby="sizeLabel"></div>
         <p id="variantMeta"></p>
         <div class="detail-price"><strong id="currentPrice"></strong><span id="referencePrice"></span></div>
         <div id="metrics" class="metrics"></div>
+        <p id="secondItemOffer" class="campaign-note" hidden>A loja sinaliza 50% na segunda peça elegível. Confira as condições no <a href="https://store.botafogo.com.br/black-fire-2" target="_blank" rel="noopener noreferrer">site da campanha ↗</a>.</p>
         <div class="detail-actions">
           <a id="openShop" class="pill solid" target="_blank" rel="noopener noreferrer">Ver na loja ↗</a>
           <a id="share" class="pill" target="_blank" rel="noopener noreferrer">WhatsApp</a>
@@ -214,6 +222,9 @@ const atHistoricalLow = item => stocked(item) && !item.stale
   && item.previous_historical_low > 0 && item.price <= item.previous_historical_low;
 const sizeOf = item => item.size || 'Único';
 const shelves = ['Todos os produtos', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
+const blackFireShelf = '🔥 Black Fire';
+let blackFireProducts = new Set();
+let blackFireSecondItemProducts = new Set();
 const sizesInOrder = ['PP','P','M','G','GG','XG','2GG','3GG','4GG','5GG','6GG'];
 const pageSize = 24;
 let shelf = shelves[0];
@@ -293,7 +304,9 @@ function currentGroups() {
   const sort = $('sort').value;
   const result = [];
   for (const group of groups) {
-    if (shelf !== shelves[0] && group.category !== shelf) continue;
+    if (shelf === blackFireShelf) {
+      if (!blackFireProducts.has(String(group.id))) continue;
+    } else if (shelf !== shelves[0] && group.category !== shelf) continue;
     const matches = group.variants.filter(item => eligible(item, group, mode, size, query));
     if (!matches.length) continue;
     matches.sort((a,b) => (sort === 'discount' ? announcedDiscount(b) - announcedDiscount(a) : 0)
@@ -315,7 +328,10 @@ function currentGroups() {
 }
 
 function renderCategories() {
-  $('categories').replaceChildren(...shelves.map(label => {
+  const categories = blackFireProducts.size
+    ? [shelves[0],blackFireShelf,...shelves.slice(1)]
+    : shelves;
+  $('categories').replaceChildren(...categories.map(label => {
     const tab = element('button',label,'pill');
     tab.type = 'button';
     tab.setAttribute('aria-pressed',String(label === shelf));
@@ -334,6 +350,7 @@ function render() {
   const pages = Math.max(1,Math.ceil(results.length / pageSize));
   page = Math.min(page,pages);
   $('sectionTitle').textContent = shelf;
+  $('blackFireNotice').hidden = shelf !== blackFireShelf;
   $('count').textContent = results.length + (results.length === 1 ? ' produto' : ' produtos');
   $('pagination').hidden = pages === 1;
   $('prev').disabled = page === 1;
@@ -345,7 +362,8 @@ function render() {
   if (!results.length) {
     const message = $('offer').value === 'mizuno50'
       ? 'Nenhuma oferta Mizuno 26/27 com desconto de 50% ou mais corresponde aos filtros.'
-      : 'Nenhum produto corresponde aos filtros.';
+      : shelf === blackFireShelf ? 'Nenhuma oferta Black Fire corresponde aos filtros.'
+        : 'Nenhum produto corresponde aos filtros.';
     $('products').append(element('p',message,'empty'));
   }
 }
@@ -410,6 +428,7 @@ function card(group) {
   else if (atHistoricalLow(item)) image.append(element('span','Mínimo histórico','flag'));
   else if (group.drop) image.append(element('span','Queda real','flag'));
   else if (!item.stale && stocked(item) && item.announced_pct > 0) image.append(element('span','−' + pct(item.announced_pct),'flag sale'));
+  if (blackFireProducts.has(String(item.product))) image.append(element('span','🔥 Black Fire','flag black-fire'));
   const favorite = element('button',undefined,'favorite');
   favorite.type = 'button';
   const updateFavorite = () => {
@@ -476,6 +495,9 @@ function openDetail(group) {
 
 function showOffer(item) {
   $('detailImage').replaceChildren(photo(item.image));
+  const blackFire = blackFireProducts.has(String(item.product));
+  $('detailBlackFire').hidden = !blackFire;
+  $('secondItemOffer').hidden = !blackFire || !blackFireSecondItemProducts.has(String(item.product));
   $('variantMeta').textContent = [item.color, 'SKU ' + item.sku, 'Vendedor ' + item.seller].filter(Boolean).join(' · ');
   $('currentPrice').textContent = stocked(item) ? money(item.price) : 'Indisponível';
   $('referencePrice').textContent = item.list_price > 0 ? 'Referência ' + money(item.list_price) : '';
@@ -553,6 +575,11 @@ async function loadCatalog() {
   try {
     const payload = await fetchCatalog();
     groups = groupCatalog(payload.items);
+    const campaign = payload.black_fire;
+    blackFireProducts = new Set(Array.isArray(campaign?.product_ids) ? campaign.product_ids : []);
+    blackFireSecondItemProducts = new Set(Array.isArray(campaign?.second_item_50_product_ids) ? campaign.second_item_50_product_ids : []);
+    if (shelf === blackFireShelf && !blackFireProducts.size) shelf = shelves[0];
+    renderCategories();
     const options = [...new Set(payload.items.map(sizeOf))].sort((a,b) => collator.compare(a,b));
     const sizeOptions = ['Todos os tamanhos',...options].map((label,index) => {
       const option = element('option',label);
