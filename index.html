@@ -175,8 +175,8 @@
           <option value="out">Indisponíveis</option>
         </select>
         <select id="sort" aria-label="Ordenar">
-          <option value="featured">Destaques</option>
           <option value="discount">Maior desconto</option>
+          <option value="featured">Destaques</option>
           <option value="cheap">Menor preço</option>
           <option value="name">Nome</option>
         </select>
@@ -260,7 +260,7 @@ function segmentOf(item) {
   return 'Sem público informado';
 }
 const sizeValue = item => JSON.stringify([segmentOf(item),sizeOf(item)]);
-const shelves = ['Todos os produtos', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
+const shelves = ['Todos os produtos', 'Reserva · 50%+', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
 const blackFireShelf = '🔥 Black Fire';
 let blackFireProducts = new Set();
 let blackFireSecondItemProducts = new Set();
@@ -337,6 +337,11 @@ function isMizunoPromotion(item) {
     && /\b(?:20)?26\s*[\/_.–-]\s*(?:20)?27\b/.test(description);
 }
 
+function isReservaPromotion(item) {
+  return stocked(item) && !item.stale && announcedDiscount(item) >= 50
+    && (item.categories || []).some(category => /\/reserva\//i.test(category));
+}
+
 function currentGroups() {
   const mode = $('offer').value;
   const segment = $('segment').value;
@@ -347,8 +352,9 @@ function currentGroups() {
   for (const group of groups) {
     if (shelf === blackFireShelf) {
       if (!blackFireProducts.has(String(group.id))) continue;
-    } else if (shelf !== shelves[0] && group.category !== shelf) continue;
-    const matches = group.variants.filter(item => eligible(item, group, mode, segment, size, query));
+    } else if (shelf !== shelves[0] && shelf !== 'Reserva · 50%+' && group.category !== shelf) continue;
+    const matches = group.variants.filter(item => eligible(item, group, mode, segment, size, query)
+      && (shelf !== 'Reserva · 50%+' || isReservaPromotion(item)));
     if (!matches.length) continue;
     matches.sort((a,b) => (sort === 'discount' ? announcedDiscount(b) - announcedDiscount(a) : 0)
       || Number(stocked(b)) - Number(stocked(a)) || Number(a.stale) - Number(b.stale) || a.price - b.price);
@@ -361,6 +367,8 @@ function currentGroups() {
     if (sort === 'name') return collator.compare(a.best.name,b.best.name);
     if (sort === 'cheap') return Number(stocked(b.best)) - Number(stocked(a.best)) || a.best.price - b.best.price;
     if (sort === 'discount') return announcedDiscount(b.best) - announcedDiscount(a.best)
+      || (shelf === 'Reserva · 50%+' ? Number(/camiseta/i.test(b.best.name)) - Number(/camiseta/i.test(a.best.name)) : 0)
+      || b.best.announced_saving - a.best.announced_saving
       || collator.compare(a.best.name,b.best.name);
     return Number(b.priority) - Number(a.priority) || b.drop - a.drop
       || (b.best.stale ? 0 : b.best.announced_pct) - (a.best.stale ? 0 : a.best.announced_pct)
