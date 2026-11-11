@@ -163,6 +163,7 @@
       </p>
       <div class="filters">
         <input type="search" id="search" aria-label="Buscar produto" placeholder="Buscar produto, cor ou SKU">
+        <select id="segment" aria-label="Público e tipo"><option value="">Todos os públicos</option></select>
         <select id="size" aria-label="Tamanho"><option value="">Todos os tamanhos</option></select>
         <select id="offer" aria-label="Tipo de oferta">
           <option value="stock">Em estoque</option>
@@ -243,6 +244,22 @@ const announcedDiscount = item => stocked(item) && !item.stale && item.announced
 const atHistoricalLow = item => stocked(item) && !item.stale
   && item.previous_historical_low > 0 && item.price <= item.previous_historical_low;
 const sizeOf = item => item.size || 'Único';
+const segments = ['Masculino', 'Feminino', 'Infantil', 'Bebê', 'Calçados', 'Acessórios', 'Sem público informado'];
+function segmentOf(item) {
+  const name = clean(item.name || '');
+  const categories = clean((item.categories || []).join(' '));
+  const size = clean(sizeOf(item));
+  if (/\b(?:chuteira|tenis|sandalia|chinelo|papete|slide|kenner)\b/.test(name) && !/\b(?:chaveiro|miniatura)\b/.test(name)) return 'Calçados';
+  if (/\b(?:infantil|juvenil|crianca|kids?)\b/.test(name) || /\b\d+\s*anos?\b/.test(size)) return 'Infantil';
+  if (/\b(?:bebe|recem.nascid[oa]|maternidade|body|macacao)\b/.test(name) || /\b(?:rn|\d+\s*(?:a|ate)?\s*\d*\s*meses?)\b/.test(size)) return 'Bebê';
+  if (/\b(?:infantil|juvenil|crianca|kids?)\b/.test(categories)) return 'Infantil';
+  if (/linha baby\b/.test(categories) && !/baby e infantil/.test(categories)) return 'Bebê';
+  if (/\bfeminin[oa]\b/.test(name + ' ' + categories)) return 'Feminino';
+  if (/\bmasculin[oa]\b/.test(name + ' ' + categories)) return 'Masculino';
+  if (/\b(?:chaveiro|bone|caneca|copo|garrafa|mochila|bolsa|meia|toalha|joia|colar|pulseira)\b/.test(name)) return 'Acessórios';
+  return 'Sem público informado';
+}
+const sizeValue = item => JSON.stringify([segmentOf(item),sizeOf(item)]);
 const shelves = ['Todos os produtos', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
 const blackFireShelf = '🔥 Black Fire';
 let blackFireProducts = new Set();
@@ -301,14 +318,15 @@ function groupCatalog(items) {
   return Array.from(byProduct, ([id, variants]) => ({ id, variants, category:categoryFor(variants) }));
 }
 
-function eligible(item, group, mode, size, query) {
+function eligible(item, group, mode, segment, size, query) {
   if (mode === 'out' ? stocked(item) : mode !== 'favorites' && !stocked(item)) return false;
   if (mode === 'mizuno50' && !isMizunoPromotion(item)) return false;
   if (mode === 'discount' && (item.stale || !item.announced_saving)) return false;
   if (mode === 'drop' && (item.stale || item.event !== 'drop')) return false;
   if (mode === 'record' && !atHistoricalLow(item)) return false;
   if (mode === 'favorites' && !favorites.has(group.id)) return false;
-  if (size && sizeOf(item) !== size) return false;
+  if (segment && segmentOf(item) !== segment) return false;
+  if (size && sizeValue(item) !== size) return false;
   return !query || clean([item.name, item.color, sizeOf(item), item.sku].join(' ')).includes(query);
 }
 
@@ -321,6 +339,7 @@ function isMizunoPromotion(item) {
 
 function currentGroups() {
   const mode = $('offer').value;
+  const segment = $('segment').value;
   const size = $('size').value;
   const query = clean($('search').value.trim());
   const sort = $('sort').value;
@@ -329,7 +348,7 @@ function currentGroups() {
     if (shelf === blackFireShelf) {
       if (!blackFireProducts.has(String(group.id))) continue;
     } else if (shelf !== shelves[0] && group.category !== shelf) continue;
-    const matches = group.variants.filter(item => eligible(item, group, mode, size, query));
+    const matches = group.variants.filter(item => eligible(item, group, mode, segment, size, query));
     if (!matches.length) continue;
     matches.sort((a,b) => (sort === 'discount' ? announcedDiscount(b) - announcedDiscount(a) : 0)
       || Number(stocked(b)) - Number(stocked(a)) || Number(a.stale) - Number(b.stale) || a.price - b.price);
@@ -608,13 +627,14 @@ async function loadCatalog() {
     blackFireSecondItemProducts = new Set(Array.isArray(campaign?.second_item_50_product_ids) ? campaign.second_item_50_product_ids : []);
     if (shelf === blackFireShelf && !blackFireProducts.size) shelf = shelves[0];
     renderCategories();
-    const options = [...new Set(payload.items.map(sizeOf))].sort((a,b) => collator.compare(a,b));
-    const sizeOptions = ['Todos os tamanhos',...options].map((label,index) => {
-      const option = element('option',label);
-      option.value = index ? label : '';
+    const availableSegments = segments.filter(segment => payload.items.some(item => segmentOf(item) === segment));
+    $('segment').replaceChildren(element('option','Todos os públicos'),...availableSegments.map(segment => {
+      const option = element('option',segment);
+      option.value = segment;
       return option;
-    });
-    $('size').replaceChildren(...sizeOptions);
+    }));
+    $('segment').firstChild.value = '';
+    updateSizeOptions();
     const description = payload.run.status === 'partial' ? ' · coleta parcial' : '';
     $('sync').textContent = 'Leitura de ' + formatDate(payload.run.at) + description;
     loaded = true;
@@ -632,6 +652,34 @@ async function loadCatalog() {
 }
 
 $('search').oninput = resetPage;
+function updateSizeOptions() {
+  const selected = $('size').value;
+  const segment = $('segment').value;
+  const options = [element('option','Todos os tamanhos')];
+  options[0].value = '';
+  for (const name of segments) {
+    if (segment && name !== segment) continue;
+    const labels = [...new Set(groups.flatMap(group => group.variants.filter(item => segmentOf(item) === name).map(sizeOf)))];
+    if (!labels.length) continue;
+    labels.sort((a,b) => {
+      const first = sizesInOrder.indexOf(a.toUpperCase());
+      const second = sizesInOrder.indexOf(b.toUpperCase());
+      return (first < 0 ? 100 : first) - (second < 0 ? 100 : second) || collator.compare(a,b);
+    });
+    const group = document.createElement('optgroup');
+    group.label = name;
+    for (const label of labels) {
+      const option = element('option',label);
+      option.value = JSON.stringify([name,label]);
+      group.append(option);
+    }
+    options.push(group);
+  }
+  $('size').replaceChildren(...options);
+  if (selected && [...$('size').querySelectorAll('option')].some(option => option.value === selected)) $('size').value = selected;
+}
+const onSegmentChange = () => { updateSizeOptions(); resetPage(); };
+$('segment').onchange = onSegmentChange;
 for (const id of ['size','offer','sort']) $(id).onchange = resetPage;
 $('prev').onclick = () => { page--; render(); $('sectionTitle').scrollIntoView({block:'start'}); };
 $('next').onclick = () => { page++; render(); $('sectionTitle').scrollIntoView({block:'start'}); };
