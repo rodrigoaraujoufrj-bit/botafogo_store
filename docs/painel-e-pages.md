@@ -28,6 +28,8 @@ Em **Ordenar → Maior desconto**, a grade segue o percentual de desconto anunci
 
 O selo **🔥 Black Fire** e a aba da campanha usam os produtos confirmados na coleção oficial VTEX `235`, consultada durante a exportação. A coleção `239` indica a promoção anunciada de 50% no produto de menor valor na compra de dois itens elegíveis. A ficha exibe essa condição em separado. O percentual do cartão continua sendo calculado sobre o preço unitário. Se a consulta da coleção ficar parcial, apenas produtos confirmados recebem o selo. [Campanha Black Fire na Botafogo Store](https://store.botafogo.com.br/black-fire-2)
 
+A ficha também inclui **Camisa 7 · descontos por plano**. O quadro reúne os percentuais gerais anunciados pelo clube e o cupom para camisa oficial elegível. A oferta personalizada é confirmada no carrinho da loja após o login. O Radar usa os preços públicos do catálogo para o histórico e a ordenação. [Benefícios do Camisa 7](https://www.botafogo.com.br/noticias/nossa-gente-e-botafogo-de-verdade)
+
 ## Sincronização com GitHub Pages
 
 O [site público](https://rodrigoaraujoufrj-bit.github.io/botafogo_store/) carrega `catalogo.json`. Quando o HTML é aberto como arquivo local, ele usa o endereço público do catálogo. Se a primeira fonte falhar, tenta o arquivo diretamente no GitHub. O catálogo tem a versão do formato, a rodada, o estado de cobertura e as ofertas por produto, SKU e vendedor. O campo `previous_historical_low` contém o menor preço positivo anterior observado em estoque para a mesma oferta. Ele é nulo na primeira leitura válida. [Como funciona o GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)

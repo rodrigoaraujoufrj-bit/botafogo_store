@@ -71,6 +71,10 @@
     .campaign-tag { display:inline-block; width:fit-content; margin-top:8px; padding:4px 8px; background:#181818; color:#fff; border-radius:999px; font-size:11px; font-weight:800; }
     .campaign-note { background:var(--soft); padding:9px 11px; border-radius:10px; margin:8px 0; font-size:12px; }
     .campaign-note a { font-weight:750; }
+    .member-rules summary { cursor:pointer; font-weight:750; }
+    .member-rules table { width:100%; border-collapse:collapse; margin:8px 0; }
+    .member-rules th,.member-rules td { padding:5px 4px; text-align:left; border-bottom:1px solid var(--line); }
+    .member-rules p + p { margin-top:5px; }
     .favorite { position:absolute; z-index:2; right:14px; top:14px; border:0; border-radius:50%; width:31px; height:31px; display:grid; place-items:center; font-size:19px; line-height:1; background:#fff; }
     .favorite[aria-pressed=true] { background:#171717; color:white; }
     .card-body { display:grid; gap:7px; padding:10px 5px 6px; flex:1; }
@@ -199,6 +203,21 @@
         <div class="detail-price"><strong id="currentPrice"></strong><span id="referencePrice"></span></div>
         <div id="metrics" class="metrics"></div>
         <p id="secondItemOffer" class="campaign-note" hidden>Na compra de dois produtos elegíveis, a loja aplica 50% de desconto ao de menor valor. <a href="https://store.botafogo.com.br/black-fire-2" target="_blank" rel="noopener noreferrer">Ver campanha ↗</a></p>
+        <details class="campaign-note member-rules" id="camisa7Rules">
+          <summary>Camisa 7 · descontos por plano</summary>
+          <table aria-label="Benefícios Camisa 7 na Botafogo Store">
+            <thead><tr><th scope="col">Plano</th><th scope="col">Na loja</th><th scope="col">Cupom de camisa oficial</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Branco</th><td>5%</td><td>—</td></tr>
+              <tr><th scope="row">Preto</th><td>10%</td><td>30%</td></tr>
+              <tr><th scope="row">Alvinegro</th><td>15%</td><td>50%</td></tr>
+              <tr><th scope="row">Glorioso</th><td>20%</td><td>100%</td></tr>
+            </tbody>
+          </table>
+          <p>Entre na loja com o e-mail do Camisa 7 e confira o valor no carrinho. A loja informa que o benefício comum exclui frete e não acumula com outras promoções ou vale-compras.</p>
+          <p>O cupom vale para uma camisa oficial elegível, a partir do sexto mês de contrato ativo. Confira a emissão e a validade na sua conta Camisa 7.</p>
+          <p><a href="https://www.botafogo.com.br/noticias/nossa-gente-e-botafogo-de-verdade" target="_blank" rel="noopener noreferrer">Benefícios por plano ↗</a> · <a href="https://www.botafogostore.com/duvidas-frequentes/" target="_blank" rel="noopener noreferrer">Condições da loja ↗</a></p>
+        </details>
         <div class="detail-actions">
           <a id="openShop" class="pill solid" target="_blank" rel="noopener noreferrer">Ver na loja ↗</a>
           <a id="share" class="pill" target="_blank" rel="noopener noreferrer">WhatsApp</a>
