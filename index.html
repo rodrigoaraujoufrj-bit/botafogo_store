@@ -83,6 +83,10 @@
     .discount-callout { display:grid; gap:3px; align-content:center; padding:9px 10px; background:#171717; color:#fff; border-radius:10px; }
     .discount-callout strong { font-size:clamp(20px,2.8vw,30px); line-height:1; letter-spacing:-.055em; }
     .discount-callout span { font-size:11px; font-weight:800; line-height:1.2; }
+    .price-trend { display:grid; gap:2px; padding:8px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+    .price-trend strong { font-size:15px; line-height:1.15; }
+    .price-trend.drop { background:#e3f5e9; color:#135b31; border:1px solid #74bd8c; }
+    .price-trend.increase { background:#fce8e8; color:#a32929; border:1px solid #e0a0a0; }
     .price-button { align-self:end; display:flex; justify-content:center; align-items:baseline; gap:4px; flex-wrap:wrap; width:100%; border:1px solid #272727; background:#fff; border-radius:999px; padding:6px 5px; font-size:13px; font-weight:800; }
     .price-button:hover { background:#171717; color:#fff; }
     .price-button small { font-size:10px; font-weight:500; }
@@ -326,7 +330,7 @@ function seasonOf(item) {
   const second = Number(match[2].slice(-2));
   return second === (first + 1) % 100 ? String(first).padStart(2,'0') + '/' + String(second).padStart(2,'0') : '';
 }
-const shelves = ['Todos os produtos', 'Reserva · 50%+', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
+const shelves = ['Todos os produtos', 'Reserva', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
 const blackFireShelf = '🔥 Black Fire';
 let blackFireProducts = new Set();
 let blackFireSecondItemProducts = new Set();
@@ -407,9 +411,8 @@ function isMizunoPromotion(item) {
     && /\b(?:20)?26\s*[\/_.–-]\s*(?:20)?27\b/.test(description);
 }
 
-function isReservaPromotion(item) {
-  return stocked(item) && !item.stale && announcedDiscount(item) >= 50
-    && (item.categories || []).some(category => /\/reserva\//i.test(category));
+function isReservaProduct(item) {
+  return (item.categories || []).some(category => /\/reserva\//i.test(category));
 }
 
 function currentGroups() {
@@ -426,9 +429,9 @@ function currentGroups() {
   for (const group of groups) {
     if (shelf === blackFireShelf) {
       if (!blackFireProducts.has(String(group.id))) continue;
-    } else if (shelf !== shelves[0] && shelf !== 'Reserva · 50%+' && group.category !== shelf) continue;
+    } else if (shelf !== shelves[0] && shelf !== 'Reserva' && group.category !== shelf) continue;
     const matches = group.variants.filter(item => eligible(item, group, mode, segment, size, query, type, season, minPrice, maxPrice)
-      && (shelf !== 'Reserva · 50%+' || isReservaPromotion(item)));
+      && (shelf !== 'Reserva' || isReservaProduct(item)));
     if (!matches.length) continue;
     matches.sort((a,b) => (sort === 'discount' ? announcedDiscount(b) - announcedDiscount(a) : 0)
       || Number(stocked(b)) - Number(stocked(a)) || Number(a.stale) - Number(b.stale) || a.price - b.price);
@@ -441,7 +444,7 @@ function currentGroups() {
     if (sort === 'name') return collator.compare(a.best.name,b.best.name);
     if (sort === 'cheap') return Number(stocked(b.best)) - Number(stocked(a.best)) || a.best.price - b.best.price;
     if (sort === 'discount') return announcedDiscount(b.best) - announcedDiscount(a.best)
-      || (shelf === 'Reserva · 50%+' ? Number(/camiseta/i.test(b.best.name)) - Number(/camiseta/i.test(a.best.name)) : 0)
+      || (shelf === 'Reserva' ? Number(/camiseta/i.test(b.best.name)) - Number(/camiseta/i.test(a.best.name)) : 0)
       || b.best.announced_saving - a.best.announced_saving
       || collator.compare(a.best.name,b.best.name);
     return Number(b.priority) - Number(a.priority) || b.drop - a.drop
@@ -589,8 +592,16 @@ function card(group) {
   body.append(title,element('small',meta,'card-meta'));
   if (discount) {
     const callout = element('div',undefined,'discount-callout');
-    callout.append(element('strong',pct(discount) + ' OFF'),element('span','ECONOMIZE ' + money(item.announced_saving)));
+    callout.append(element('span','DESCONTO ANUNCIADO PELA LOJA'),element('strong',pct(discount) + ' OFF'),element('span','ECONOMIZE ' + money(item.announced_saving)));
     body.append(callout);
+  }
+  if (!item.stale && stocked(item) && item.previous > 0 && (item.event === 'drop' || item.event === 'increase')) {
+    const change = Math.abs(item.price - item.previous);
+    const changePct = 100 * change / item.previous;
+    const trend = element('div',undefined,'price-trend ' + item.event);
+    trend.append(element('strong',(item.event === 'drop' ? '↓ Caiu ' : '↑ Subiu ') + money(change) + ' · ' + pct(changePct)),
+      element('span','Preço anterior ' + money(item.previous) + ' · tamanho ' + sizeOf(item)));
+    body.append(trend);
   }
   body.append(price);
   product.append(image,favorite,body);
@@ -642,6 +653,10 @@ function showOffer(item) {
       ? 'Já estava em promoção de ' + money(item.previous_reference) + ' por ' + money(item.previous) + '. '
       : '';
     metrics.push(previous + 'Queda adicional de ' + money(item.additional_saving) + ' (' + pct(item.additional_pct) + ').');
+  }
+  if (item.event === 'increase' && !item.stale && item.previous > 0) {
+    const increase = item.price - item.previous;
+    metrics.push('Preço subiu ' + money(increase) + ' (' + pct(100 * increase / item.previous) + ') desde a leitura anterior.');
   }
   if (item.event === 'restock') metrics.push('Reposição de estoque observada.');
   if (item.event === 'first') metrics.push('Primeira leitura registrada.');
