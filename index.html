@@ -155,6 +155,8 @@
     .filters input::placeholder { color:#b5bfcd; }
     .filters input:focus,.filters select:focus { outline:2px solid #dcecff; outline-offset:1px; box-shadow:0 0 0 4px #8cc3ff48,0 0 18px #9ec9ff82; }
     .filters select option,.filters select optgroup { background:#253344; color:#fff; }
+    .filters .search-field { flex-basis:100%; }
+    .filters .price-field { flex:1 1 125px; }
     .highlight-card { background:linear-gradient(145deg,#35465b,#1c2735); border:1px solid #8496ad; box-shadow:inset 0 1px 0 #ffffff35,0 9px 20px #0008; }
     .highlight-card:hover,.highlight-card.priority:hover { background:linear-gradient(145deg,#4b6280,#26374b); box-shadow:0 0 18px #9bc7f470,0 9px 20px #0009; }
     .highlight-card.priority { background:linear-gradient(145deg,#354c68,#172333); border-color:#bed2e7; }
@@ -197,12 +199,16 @@
       <p id="sync" role="status">Carregando catálogo…</p>
     </div>
     <div class="board">
-      <nav id="categories" class="tabs" aria-label="Categorias"></nav>
-      <p id="blackFireNotice" class="campaign-note" hidden>
-        Ofertas identificadas pela loja na campanha. <a href="https://store.botafogo.com.br/black-fire-2" target="_blank" rel="noopener noreferrer">Ver Black Fire na loja ↗</a>
-      </p>
       <div class="filters">
-        <input type="search" id="search" aria-label="Buscar produto" placeholder="Buscar produto, cor ou SKU">
+        <input type="search" id="search" class="search-field" aria-label="Buscar produto" placeholder="Buscar produto, coleção, cor ou SKU">
+        <select id="type" aria-label="Tipo de produto">
+          <option value="">Todos os tipos</option><option value="official">Camisa oficial</option>
+          <option value="shirt">Camiseta</option><option value="shorts">Bermuda e shorts</option>
+          <option value="outerwear">Moletom e casaco</option><option value="other">Outros produtos</option>
+        </select>
+        <select id="season" aria-label="Temporada"><option value="">Todas as temporadas</option></select>
+        <input type="number" id="minPrice" class="price-field" aria-label="Preço mínimo em reais" placeholder="R$ mínimo" min="0" step="1" inputmode="numeric">
+        <input type="number" id="maxPrice" class="price-field" aria-label="Preço máximo em reais" placeholder="R$ máximo" min="0" step="1" inputmode="numeric">
         <select id="segment" aria-label="Público e tipo"><option value="">Todos os públicos</option></select>
         <select id="size" aria-label="Tamanho"><option value="">Todos os tamanhos</option></select>
         <select id="offer" aria-label="Tipo de oferta">
@@ -221,6 +227,10 @@
           <option value="name">Nome</option>
         </select>
       </div>
+      <nav id="categories" class="tabs" aria-label="Categorias"></nav>
+      <p id="blackFireNotice" class="campaign-note" hidden>
+        Ofertas identificadas pela loja na campanha. <a href="https://store.botafogo.com.br/black-fire-2" target="_blank" rel="noopener noreferrer">Ver Black Fire na loja ↗</a>
+      </p>
       <section class="highlights" id="highlights" aria-labelledby="highlightsTitle" hidden>
         <h2 id="highlightsTitle">Destaques</h2>
         <div class="highlight-grid" id="highlightCards"></div>
@@ -300,6 +310,22 @@ function segmentOf(item) {
   return 'Sem público informado';
 }
 const sizeValue = item => JSON.stringify([segmentOf(item),sizeOf(item)]);
+function productType(item) {
+  const name = clean(item.name);
+  const categories = clean((item.categories || []).join(' '));
+  if (/\bcamisa\b/.test(name) && /linha oficial|uniforme|\b(?:home|away|third|fourth)\b/.test(name + ' ' + categories)) return 'official';
+  if (/\b(?:camiseta|t.shirt)\b/.test(name)) return 'shirt';
+  if (/\b(?:bermuda|shorts?)\b/.test(name)) return 'shorts';
+  if (/\b(?:moletom|casaco|jaqueta|sueter)\b/.test(name)) return 'outerwear';
+  return 'other';
+}
+function seasonOf(item) {
+  const match = (item.name + ' ' + (item.categories || []).join(' ')).match(/\b(20\d{2}|\d{2})\s*[\/_.–-]\s*(20\d{2}|\d{2})\b/);
+  if (!match) return '';
+  const first = Number(match[1].slice(-2));
+  const second = Number(match[2].slice(-2));
+  return second === (first + 1) % 100 ? String(first).padStart(2,'0') + '/' + String(second).padStart(2,'0') : '';
+}
 const shelves = ['Todos os produtos', 'Reserva · 50%+', 'Linha oficial', 'Treino e viagem', 'Coleções', 'Acessórios', 'Outlet'];
 const blackFireShelf = '🔥 Black Fire';
 let blackFireProducts = new Set();
@@ -358,7 +384,7 @@ function groupCatalog(items) {
   return Array.from(byProduct, ([id, variants]) => ({ id, variants, category:categoryFor(variants) }));
 }
 
-function eligible(item, group, mode, segment, size, query) {
+function eligible(item, group, mode, segment, size, query, type, season, minPrice, maxPrice) {
   if (mode === 'out' ? stocked(item) : mode !== 'favorites' && !stocked(item)) return false;
   if (mode === 'mizuno50' && !isMizunoPromotion(item)) return false;
   if (mode === 'discount' && (item.stale || !item.announced_saving)) return false;
@@ -367,7 +393,11 @@ function eligible(item, group, mode, segment, size, query) {
   if (mode === 'favorites' && !favorites.has(group.id)) return false;
   if (segment && segmentOf(item) !== segment) return false;
   if (size && sizeValue(item) !== size) return false;
-  return !query || clean([item.name, item.color, sizeOf(item), item.sku].join(' ')).includes(query);
+  if (type && productType(item) !== type) return false;
+  if (season && seasonOf(item) !== season) return false;
+  if (minPrice !== null && item.price < minPrice) return false;
+  if (maxPrice !== null && item.price > maxPrice) return false;
+  return !query || clean([item.name, item.color, sizeOf(item), item.sku, ...(item.categories || [])].join(' ')).includes(query);
 }
 
 function isMizunoPromotion(item) {
@@ -387,13 +417,17 @@ function currentGroups() {
   const segment = $('segment').value;
   const size = $('size').value;
   const query = clean($('search').value.trim());
+  const type = $('type').value;
+  const season = $('season').value;
+  const minPrice = $('minPrice').value === '' ? null : Math.round(Number($('minPrice').value) * 100);
+  const maxPrice = $('maxPrice').value === '' ? null : Math.round(Number($('maxPrice').value) * 100);
   const sort = $('sort').value;
   const result = [];
   for (const group of groups) {
     if (shelf === blackFireShelf) {
       if (!blackFireProducts.has(String(group.id))) continue;
     } else if (shelf !== shelves[0] && shelf !== 'Reserva · 50%+' && group.category !== shelf) continue;
-    const matches = group.variants.filter(item => eligible(item, group, mode, segment, size, query)
+    const matches = group.variants.filter(item => eligible(item, group, mode, segment, size, query, type, season, minPrice, maxPrice)
       && (shelf !== 'Reserva · 50%+' || isReservaPromotion(item)));
     if (!matches.length) continue;
     matches.sort((a,b) => (sort === 'discount' ? announcedDiscount(b) - announcedDiscount(a) : 0)
@@ -685,6 +719,17 @@ async function loadCatalog() {
       return option;
     }));
     $('segment').firstChild.value = '';
+    const selectedSeason = $('season').value;
+    const seasons = [...new Set(payload.items.map(seasonOf).filter(Boolean))].sort((a,b) => b.localeCompare(a));
+    const seasonOptions = [element('option','Todas as temporadas'),...seasons.map((season,index) => {
+      const label = index === 0 ? season + ' · atual' : index === 1 ? season + ' · passada' : season;
+      const option = element('option',label);
+      option.value = season;
+      return option;
+    })];
+    seasonOptions[0].value = '';
+    $('season').replaceChildren(...seasonOptions);
+    if (seasons.includes(selectedSeason)) $('season').value = selectedSeason;
     updateSizeOptions();
     const description = payload.run.status === 'partial' ? ' · coleta parcial' : '';
     $('sync').textContent = 'Leitura de ' + formatDate(payload.run.at) + description;
@@ -703,6 +748,7 @@ async function loadCatalog() {
 }
 
 $('search').oninput = resetPage;
+for (const id of ['minPrice','maxPrice']) $(id).oninput = resetPage;
 function updateSizeOptions() {
   const selected = $('size').value;
   const segment = $('segment').value;
@@ -731,7 +777,7 @@ function updateSizeOptions() {
 }
 const onSegmentChange = () => { updateSizeOptions(); resetPage(); };
 $('segment').onchange = onSegmentChange;
-for (const id of ['size','offer','sort']) $(id).onchange = resetPage;
+for (const id of ['size','offer','sort','type','season']) $(id).onchange = resetPage;
 $('prev').onclick = () => { page--; render(); $('sectionTitle').scrollIntoView({block:'start'}); };
 $('next').onclick = () => { page++; render(); $('sectionTitle').scrollIntoView({block:'start'}); };
 renderCategories();
