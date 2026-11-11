@@ -58,6 +58,7 @@ ORDER BY u.name, u.price, u.sku, u.seller;
 
 - **Desconto anunciado** usa a diferença entre preço de referência e preço de venda da mesma observação.
 - **Queda observada** compara o preço de venda atual com a última leitura válida e disponível da mesma variação e do mesmo vendedor. Preço igual e mudança isolada da referência não disparam alerta. Reposição aparece como um evento próprio.
+- **Indicador de tendência da vitrine** compara o preço atual com o último preço de venda diferente registrado para a mesma variação e vendedor, desde a última indisponibilidade observada. O campo público `last_different_price` é derivado do histórico no PostgreSQL. Ele mantém a seta de alta ou baixa visível nas rodadas em que o preço permanece igual, sem criar novos alertas.
 - **Menor preço em 30 dias** considera observações com estoque e preço positivo. Frete, cupons, benefícios exclusivos e personalização ficam fora desse cálculo.
 
 Por exemplo, com referência de R$ 399,99, a queda do preço de venda de R$ 299,99 para R$ 179,99 representa R$ 120,00 de economia adicional, cerca de 40% sobre o preço anterior. O desconto anunciado nesse exemplo é de cerca de 55% sobre a referência.

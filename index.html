@@ -595,12 +595,14 @@ function card(group) {
     callout.append(element('span','DESCONTO ANUNCIADO PELA LOJA'),element('strong',pct(discount) + ' OFF'),element('span','ECONOMIZE ' + money(item.announced_saving)));
     body.append(callout);
   }
-  if (!item.stale && stocked(item) && item.previous > 0 && (item.event === 'drop' || item.event === 'increase')) {
-    const change = Math.abs(item.price - item.previous);
-    const changePct = 100 * change / item.previous;
-    const trend = element('div',undefined,'price-trend ' + item.event);
-    trend.append(element('strong',(item.event === 'drop' ? '↓ Caiu ' : '↑ Subiu ') + money(change) + ' · ' + pct(changePct)),
-      element('span','Preço anterior ' + money(item.previous) + ' · tamanho ' + sizeOf(item)));
+  const baseline = item.last_different_price || ((item.event === 'drop' || item.event === 'increase') && item.previous);
+  if (!item.stale && stocked(item) && baseline > 0 && item.price !== baseline) {
+    const change = Math.abs(item.price - baseline);
+    const changePct = 100 * change / baseline;
+    const direction = item.price < baseline ? 'drop' : 'increase';
+    const trend = element('div',undefined,'price-trend ' + direction);
+    trend.append(element('strong',(direction === 'drop' ? '↓ Caiu ' : '↑ Subiu ') + money(change) + ' · ' + pct(changePct)),
+      element('span','Último preço diferente ' + money(baseline) + ' · tamanho ' + sizeOf(item)));
     body.append(trend);
   }
   body.append(price);
@@ -657,6 +659,11 @@ function showOffer(item) {
   if (item.event === 'increase' && !item.stale && item.previous > 0) {
     const increase = item.price - item.previous;
     metrics.push('Preço subiu ' + money(increase) + ' (' + pct(100 * increase / item.previous) + ') desde a leitura anterior.');
+  }
+  if (!item.stale && item.last_different_price > 0 && !item.event) {
+    const change = item.price - item.last_different_price;
+    metrics.push((change < 0 ? 'Preço caiu ' : 'Preço subiu ') + money(Math.abs(change))
+      + ' desde o último preço diferente registrado (' + money(item.last_different_price) + ').');
   }
   if (item.event === 'restock') metrics.push('Reposição de estoque observada.');
   if (item.event === 'first') metrics.push('Primeira leitura registrada.');
