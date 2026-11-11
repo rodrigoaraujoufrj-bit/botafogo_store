@@ -26,7 +26,7 @@ Ofertas **Mizuno 26/27 com desconto anunciado de 50% ou mais** ocupam o primeiro
 
 Em **Ordenar → Maior desconto**, a grade segue o percentual de desconto anunciado, do maior para o menor. O cartão mostra o preço e o tamanho da oferta que determina sua posição. A ordenação usa as variações que passam pelos filtros e considera descontos de ofertas confirmadas em estoque.
 
-O selo **🔥 Black Fire** e a aba da campanha usam os produtos confirmados na coleção oficial VTEX `235`, consultada durante a exportação. A coleção `239` indica a condição anunciada de 50% na segunda peça elegível, exibida em separado na ficha do produto. O percentual do cartão continua sendo calculado sobre o preço unitário. Se a consulta da coleção ficar parcial, apenas produtos confirmados recebem o selo. [Campanha Black Fire na Botafogo Store](https://store.botafogo.com.br/black-fire-2)
+O selo **🔥 Black Fire** e a aba da campanha usam os produtos confirmados na coleção oficial VTEX `235`, consultada durante a exportação. A coleção `239` indica a promoção anunciada de 50% no produto de menor valor na compra de dois itens elegíveis. A ficha exibe essa condição em separado. O percentual do cartão continua sendo calculado sobre o preço unitário. Se a consulta da coleção ficar parcial, apenas produtos confirmados recebem o selo. [Campanha Black Fire na Botafogo Store](https://store.botafogo.com.br/black-fire-2)
 
 ## Sincronização com GitHub Pages
 
