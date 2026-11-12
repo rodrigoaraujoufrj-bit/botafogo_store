@@ -115,6 +115,19 @@
     .metrics strong { font-weight:800; }
     .detail-actions { display:flex; flex-wrap:wrap; gap:6px; }
     .detail-actions a { text-decoration:none; }
+    .history-panel { margin-top:12px; padding:15px; background:#1d2b3b; border:1px solid #8093a9; border-radius:17px; }
+    .history-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .history-head h3 { margin:0; font-size:17px; }
+    .history-legend { display:flex; gap:14px; font-size:11px; color:#d8e5f2; }
+    .history-legend span::before { content:''; display:inline-block; width:17px; margin-right:5px; vertical-align:3px; border-top:3px solid #8ed5ff; }
+    .history-legend .reference::before { border-top:2px dashed #f5f7fb; }
+    .history-chart { display:block; width:100%; height:auto; margin-top:8px; }
+    .history-status { margin-top:6px; color:#c3d1df; font-size:12px; }
+    .history-records { margin-top:9px; font-size:12px; }
+    .history-records summary { cursor:pointer; font-weight:700; }
+    .history-records table { width:100%; border-collapse:collapse; margin-top:7px; }
+    .history-records th,.history-records td { padding:5px; border-bottom:1px solid #5f7186; text-align:left; }
+    .history-records th { color:#d8e5f2; }
     @media (max-width:930px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
     @media (max-width:650px) {
       .shell { width:calc(100% - 22px); }
@@ -282,6 +295,12 @@
         </div>
       </div>
     </div>
+    <section class="history-panel" aria-labelledby="historyTitle">
+      <div class="history-head"><h3 id="historyTitle">Histórico de preços</h3><div class="history-legend"><span>Venda</span><span class="reference">Referência da loja</span></div></div>
+      <div id="historyGraph"></div>
+      <p id="historyStatus" class="history-status" role="status"></p>
+      <details id="historyRecords" class="history-records" hidden><summary>Ver leituras e mudanças</summary><div id="historyTable"></div></details>
+    </section>
   </dialog>
 <script>
 const $ = id => document.getElementById(id);
@@ -683,6 +702,119 @@ function showOffer(item) {
   if (!$('share').hidden) {
     const message = [item.name, 'Tamanho ' + sizeOf(item), 'Preço atual ' + money(item.price), ...metrics, link].join('\n');
     $('share').href = 'https://wa.me/?text=' + encodeURIComponent(message);
+  }
+  renderHistory(item);
+}
+
+let historyPromise;
+let historyRequest = 0;
+async function fetchHistory() {
+  if (!historyPromise) {
+    historyPromise = (async () => {
+      const sources = location.protocol === 'file:'
+        ? ['https://rodrigoaraujoufrj-bit.github.io/botafogo_store/historico.json']
+        : [...new Set([new URL('historico.json',document.baseURI).href,
+          'https://rodrigoaraujoufrj-bit.github.io/botafogo_store/historico.json'])];
+      for (const url of sources) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(),8000);
+        try {
+          const response = await fetch(url,{cache:'no-store',signal:controller.signal});
+          if (!response.ok) continue;
+          const data = await response.json();
+          if (data.schema_version === 1 && data.runs && data.offers) return data;
+        } catch (error) { console.warn('Histórico público',url,error); }
+        finally { clearTimeout(timeout); }
+      }
+      throw Error('Histórico indisponível');
+    })().catch(error => { historyPromise = null; throw error; });
+  }
+  return historyPromise;
+}
+
+function svgNode(tag, attributes = {}, value) {
+  const node = document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for (const [name,attribute] of Object.entries(attributes)) node.setAttribute(name,String(attribute));
+  if (value !== undefined) node.textContent = value;
+  return node;
+}
+
+function drawHistory(points, item) {
+  const valid = points.filter(point => point.available && point.price > 0);
+  if (!valid.length) return element('p','Sem preços disponíveis neste período.','history-status');
+  const values = valid.flatMap(point => [point.price,point.reference].filter(value => value > 0));
+  const minimum = Math.max(0,Math.floor(Math.min(...values) * .85 / 100) * 100);
+  const maximum = Math.ceil(Math.max(...values) * 1.08 / 100) * 100;
+  const start = points[0].time;
+  const end = Math.max(points.at(-1).time,start + 3600000);
+  const x = time => 62 + (time - start) / (end - start) * 550;
+  const y = value => 180 - (value - minimum) / (maximum - minimum) * 152;
+  const svg = svgNode('svg',{viewBox:'0 0 640 220',class:'history-chart',role:'img',
+    'aria-label':'Preços de ' + item.name + ', tamanho ' + sizeOf(item) + ', ao longo do tempo'});
+  for (const value of [minimum,(minimum + maximum) / 2,maximum]) {
+    const position = y(value);
+    svg.append(svgNode('line',{x1:62,y1:position,x2:612,y2:position,stroke:'#60758c','stroke-width':1}),
+      svgNode('text',{x:56,y:position + 4,fill:'#c3d2e1','text-anchor':'end','font-size':10},money(value)));
+  }
+  function line(field,color,dashed) {
+    let path = '';
+    let previous;
+    for (const point of points) {
+      const value = point.available ? point[field] : 0;
+      if (!(value > 0)) { previous = undefined; continue; }
+      const current = [x(point.time),y(value)];
+      path += previous ? ` H${current[0]} V${current[1]}` : ` M${current[0]},${current[1]}`;
+      previous = current;
+    }
+    svg.append(svgNode('path',{d:path,fill:'none',stroke:color,'stroke-width':dashed ? 2 : 3,
+      'stroke-dasharray':dashed ? '6 5' : '', 'stroke-linecap':'round','stroke-linejoin':'round'}));
+    if (previous) svg.append(svgNode('circle',{cx:previous[0],cy:previous[1],r:4,fill:color}));
+  }
+  line('reference','#f5f7fb',true);
+  line('price','#8ed5ff',false);
+  svg.append(svgNode('text',{x:62,y:211,fill:'#c3d2e1','font-size':11},formatDate(new Date(start))),
+    svgNode('text',{x:612,y:211,fill:'#c3d2e1','font-size':11,'text-anchor':'end'},formatDate(new Date(points.at(-1).time))));
+  return svg;
+}
+
+async function renderHistory(item) {
+  const request = ++historyRequest;
+  $('historyGraph').replaceChildren();
+  $('historyRecords').hidden = true;
+  $('historyStatus').textContent = 'Carregando histórico deste tamanho…';
+  try {
+    const history = await fetchHistory();
+    if (request !== historyRequest) return;
+    const key = [item.product,item.sku,item.seller].join('|');
+    const rows = (history.offers[key] || []).map(([run,price,reference,available]) => ({
+      time: Date.parse(history.runs[String(run)]),price,reference,available,
+    })).filter(point => Number.isFinite(point.time));
+    const observedAt = Date.parse(item.observed_at);
+    const last = rows.at(-1);
+    if (Number.isFinite(observedAt) && (!last || observedAt > last.time)) {
+      rows.push({time:observedAt,price:item.price,reference:item.list_price,available:item.available});
+    }
+    if (!rows.length) {
+      $('historyStatus').textContent = 'O histórico público desta variação começa na leitura atual.';
+      return;
+    }
+    $('historyGraph').replaceChildren(drawHistory(rows,item));
+    $('historyStatus').textContent = 'Histórico público desde ' + formatDate(new Date(rows[0].time)) + '. Valores da mesma variação e vendedor.';
+    const table = element('table');
+    table.innerHTML = '<thead><tr><th>Data</th><th>Venda</th><th>Referência</th></tr></thead>';
+    const body = element('tbody');
+    for (const row of [...rows].reverse()) {
+      const record = element('tr');
+      record.append(element('td',formatDate(new Date(row.time))),
+        element('td',row.available && row.price > 0 ? money(row.price) : 'Indisponível'),
+        element('td',row.reference > 0 ? money(row.reference) : '—'));
+      body.append(record);
+    }
+    table.append(body);
+    $('historyTable').replaceChildren(table);
+    $('historyRecords').hidden = false;
+  } catch (error) {
+    if (request === historyRequest) $('historyStatus').textContent = 'Não foi possível carregar o histórico agora.';
   }
 }
 

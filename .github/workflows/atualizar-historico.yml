@@ -1,0 +1,51 @@
+name: Atualizar histórico público
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: historico-publico
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Registrar rodada no histórico
+        run: node scripts/update-history.mjs
+      - name: Publicar histórico
+        run: |
+          if git diff --quiet -- historico.json; then exit 0; fi
+          git config user.name "Radar Botafogo"
+          git config user.email "270679273+rodrigoaraujoufrj-bit@users.noreply.github.com"
+          git add historico.json
+          git commit -m "Atualiza histórico público de preços"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep "$attempt"
+          done
+          exit 1
+      - uses: actions/configure-pages@v5
+      - name: Preparar site
+        run: |
+          mkdir _site
+          cp index.html catalogo.json historico.json _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

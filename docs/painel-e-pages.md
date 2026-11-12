@@ -18,7 +18,7 @@ O servidor substitui `__TOKEN__` ao servir o HTML. Preserve o marcador para que 
 
 ## Vitrine agrupada
 
-A vitrine do GitHub Pages está em `index.html`. Ela reúne as ofertas em **um cartão por produto**. O cartão destaca o menor preço elegível da rodada mais recente e abre tamanhos, cores, disponibilidade, preços e ações por variação. Ao escolher tamanho M, o preço mostrado no cartão vem de uma oferta M. A seção **Destaques** mostra o maior desconto anunciado a partir de 30% e uma oferta que igualou ou bateu seu mínimo histórico. Cada destaque abre a variação que gerou o preço exibido. A série completa de observações pode ser consultada no painel local.
+A vitrine do GitHub Pages está em `index.html`. Ela reúne as ofertas em **um cartão por produto**. O cartão destaca o menor preço elegível da rodada mais recente e abre tamanhos, cores, disponibilidade, preços e ações por variação. Ao escolher tamanho M, o preço mostrado no cartão vem de uma oferta M. A seção **Destaques** mostra o maior desconto anunciado a partir de 30% e uma oferta que igualou ou bateu seu mínimo histórico. Cada destaque abre a variação que gerou o preço exibido. A ficha mostra uma linha do tempo do preço de venda e da referência da loja para o SKU e vendedor selecionados. A série completa de observações permanece no PostgreSQL e pode ser consultada no painel local.
 
 O visual usa preto, branco e cinza, cartões arredondados, abas em pílula e fotos da loja. O agrupamento por categoria usa os caminhos disponíveis no catálogo e complementa a classificação pelo nome quando necessário. Favoritos da vitrine são salvos no navegador. [Referência visual da loja](https://store.botafogo.com.br/)
 
@@ -36,8 +36,10 @@ A ficha também inclui **Camisa 7 · descontos por plano**. O quadro reúne os p
 
 O [site público](https://rodrigoaraujoufrj-bit.github.io/botafogo_store/) carrega `catalogo.json`. Quando o HTML é aberto como arquivo local, ele usa o endereço público do catálogo. Se a primeira fonte falhar, tenta o arquivo diretamente no GitHub. O catálogo tem a versão do formato, a rodada, o estado de cobertura e as ofertas por produto, SKU e vendedor. O campo `previous_historical_low` contém o menor preço positivo anterior observado em estoque para a mesma oferta. Ele é nulo na primeira leitura válida. [Como funciona o GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
 
+O gráfico público carrega `historico.json`. O arquivo guarda a primeira observação e cada mudança de preço de venda, referência ou estoque por produto, SKU e vendedor. A semeadura disponível começa na rodada 37, a primeira rodada preservada no Git. As observações anteriores continuam no PostgreSQL local. O fluxo `.github/workflows/atualizar-historico.yml` acrescenta as mudanças de cada novo `catalogo.json` publicado, usando `scripts/update-history.mjs`, e publica os três arquivos da vitrine no GitHub Pages. O gráfico estende o último valor até a data da última leitura confirmada. Em coletas parciais, ofertas não observadas não ganham uma nova leitura no histórico.
+
 1. A coleta do Radar grava as observações no PostgreSQL. Rodadas completas ou parciais com ofertas disparam a exportação para `main` pela chave SSH da conta Windows.
-2. O exportador muda somente `catalogo.json` e preserva o restante da branch. A hora exibida no site é a da coleta. A atualização do Pages pode levar alguns minutos depois do commit.
+2. O exportador muda somente `catalogo.json` e preserva o restante da branch. O GitHub Actions atualiza `historico.json` após esse commit e implanta a página. A hora exibida no site é a da coleta. A atualização do Pages pode levar alguns minutos depois dos commits.
 3. Para reenviar a última rodada com ofertas, execute `pwsh -NoProfile -File .\Iniciar.ps1 -PublishOnly -NoBrowser` na pasta local. Consulte `publicacao.log` para ver o número da rodada, o commit ou a causa de falha.
 4. Quando a máquina está desligada ou a coleta falha, a página continua exibindo o último catálogo publicado. A tarefa automática retoma a exportação na próxima rodada que grave ofertas.
 
