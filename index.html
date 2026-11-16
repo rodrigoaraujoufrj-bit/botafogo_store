@@ -316,6 +316,7 @@ const announcedDiscount = item => stocked(item) && !item.stale && item.announced
   : 0;
 const atHistoricalLow = item => stocked(item) && !item.stale
   && item.previous_historical_low > 0 && item.price <= item.previous_historical_low;
+const offerKey = item => [item.product,item.sku,item.seller].join('|');
 const sizeOf = item => item.size || 'Único';
 const segments = ['Masculino', 'Feminino', 'Infantil', 'Bebê', 'Calçados', 'Acessórios', 'Sem público informado'];
 function segmentOf(item) {
@@ -359,6 +360,7 @@ let shelf = shelves[0];
 let page = 1;
 let groups = [];
 let loaded = false;
+let recentDrops = new Map();
 let favorites = new Set();
 try { favorites = new Set(JSON.parse(localStorage.getItem('radar-botafogo-favoritos') || '[]')); } catch {}
 
@@ -411,7 +413,7 @@ function eligible(item, group, mode, segment, size, query, type, season, minPric
   if (mode === 'out' ? stocked(item) : mode !== 'favorites' && !stocked(item)) return false;
   if (mode === 'mizuno50' && !isMizunoPromotion(item)) return false;
   if (mode === 'discount' && (item.stale || !item.announced_saving)) return false;
-  if (mode === 'drop' && (item.stale || item.event !== 'drop')) return false;
+  if (mode === 'drop' && (item.stale || !recentDrops.has(offerKey(item)))) return false;
   if (mode === 'record' && !atHistoricalLow(item)) return false;
   if (mode === 'favorites' && !favorites.has(group.id)) return false;
   if (segment && segmentOf(item) !== segment) return false;
@@ -455,7 +457,7 @@ function currentGroups() {
     matches.sort((a,b) => (sort === 'discount' ? announcedDiscount(b) - announcedDiscount(a) : 0)
       || Number(stocked(b)) - Number(stocked(a)) || Number(a.stale) - Number(b.stale) || a.price - b.price);
     const best = matches[0];
-    const drop = Math.max(...matches.map(item => !item.stale && item.event === 'drop' ? item.additional_pct : 0));
+    const drop = Math.max(...matches.map(item => recentDrops.get(offerKey(item))?.percent || 0));
     const priority = matches.some(isMizunoPromotion);
     result.push({ ...group, matches, best, drop, priority });
   }
@@ -517,31 +519,40 @@ function renderHighlights(results) {
   const candidates = results.flatMap(group => group.matches
     .filter(item => stocked(item) && !item.stale)
     .map(item => ({group,item})));
+  const freshDrops = candidates.filter(({item}) => recentDrops.has(offerKey(item)))
+    .sort((a,b) => recentDrops.get(offerKey(b.item)).percent - recentDrops.get(offerKey(a.item)).percent
+      || recentDrops.get(offerKey(b.item)).saving - recentDrops.get(offerKey(a.item)).saving);
+  const fresh = freshDrops[0];
   const offersByDiscount = candidates.filter(({item}) => item.announced_pct >= 30)
     .sort((a,b) => b.item.announced_pct - a.item.announced_pct || b.item.announced_saving - a.item.announced_saving);
-  const mizuno = offersByDiscount.find(({item}) => isMizunoPromotion(item));
-  const discount = offersByDiscount.find(({group}) => group.id !== mizuno?.group.id);
+  const mizuno = offersByDiscount.find(({item,group}) => isMizunoPromotion(item) && group.id !== fresh?.group.id);
+  const discount = offersByDiscount.find(({group}) => group.id !== fresh?.group.id && group.id !== mizuno?.group.id);
   const records = candidates.filter(({item}) => atHistoricalLow(item))
     .sort((a,b) => (b.item.previous_historical_low - b.item.price) - (a.item.previous_historical_low - a.item.price)
       || b.item.announced_pct - a.item.announced_pct || a.item.price - b.item.price);
-  const record = records.find(({group}) => group.id !== mizuno?.group.id && group.id !== discount?.group.id);
+  const record = records.find(({group}) => group.id !== fresh?.group.id && group.id !== mizuno?.group.id && group.id !== discount?.group.id);
   const cards = [];
+  if (fresh) {
+    const change = recentDrops.get(offerKey(fresh.item));
+    cards.push(highlightCard(fresh,'↓ Queda recente comprovada',
+      money(change.previous) + ' → ' + money(fresh.item.price) + ' · −' + pct(change.percent) + ' · tamanho ' + sizeOf(fresh.item),true));
+  }
   if (mizuno) {
     const label = atHistoricalLow(mizuno.item) ? 'Mizuno 26/27 · mínimo histórico' : 'Mizuno 26/27';
     const detail = '−' + pct(mizuno.item.announced_pct) + ' · tamanho ' + sizeOf(mizuno.item);
-    cards.push(highlightCard(mizuno,label,detail,true));
+    cards.push(highlightCard(mizuno,label,detail,!fresh));
   }
   if (discount) {
     const headline = mizuno ? 'Outro destaque de desconto' : 'Maior desconto';
     const label = atHistoricalLow(discount.item) ? headline + ' · mínimo histórico' : headline;
     cards.push(highlightCard(discount, label, '−' + pct(discount.item.announced_pct)));
   }
-  if (record) {
+  if (record && cards.length < 3) {
     const label = record.item.price < record.item.previous_historical_low ? 'Novo menor preço histórico' : 'No menor preço histórico';
     cards.push(highlightCard(record, label, sizeOf(record.item)));
   }
   $('highlights').hidden = !cards.length;
-  $('highlightCards').replaceChildren(...cards);
+  $('highlightCards').replaceChildren(...cards.slice(0,3));
 }
 
 function highlightCard({group,item}, label, detail, priority = false) {
@@ -856,6 +867,34 @@ async function fetchCatalog() {
   throw failure;
 }
 
+function findRecentDrops(history, items, runAt) {
+  const found = new Map();
+  const cutoff = Date.parse(runAt) - 48 * 60 * 60 * 1000;
+  for (const item of items) {
+    if (item.stale || !stocked(item)) continue;
+    const key = offerKey(item);
+    const points = (history.offers[key] || []).map(([run,price,reference,available]) => ({
+      time: Date.parse(history.runs[String(run)]),price,available,
+    })).filter(point => Number.isFinite(point.time));
+    const observedAt = Date.parse(item.observed_at);
+    if (Number.isFinite(observedAt) && (!points.length || observedAt > points.at(-1).time)) {
+      points.push({time:observedAt,price:item.price,available:item.available});
+    }
+    let previous;
+    let drop;
+    for (const point of points) {
+      if (!point.available || point.price <= 0) { previous = undefined; drop = undefined; continue; }
+      if (previous && point.price < previous.price) {
+        drop = {previous:previous.price,price:point.price,time:point.time,
+          saving:previous.price - point.price,percent:100 * (previous.price - point.price) / previous.price};
+      } else if (previous && point.price > previous.price) drop = undefined;
+      previous = point;
+    }
+    if (drop && drop.time >= cutoff && item.price === drop.price) found.set(key,drop);
+  }
+  return found;
+}
+
 async function loadCatalog() {
   $('sync').textContent = 'Carregando catálogo…';
   try {
@@ -889,6 +928,10 @@ async function loadCatalog() {
     $('sync').textContent = 'Leitura de ' + formatDate(payload.run.at) + description;
     loaded = true;
     render();
+    fetchHistory().then(history => {
+      recentDrops = findRecentDrops(history,payload.items,payload.run.at);
+      render();
+    }).catch(error => console.warn('Radar Botafogo · quedas recentes',error));
   } catch (error) {
     console.error('Radar Botafogo · catálogo',error);
     $('sync').textContent = 'Catálogo indisponível';
