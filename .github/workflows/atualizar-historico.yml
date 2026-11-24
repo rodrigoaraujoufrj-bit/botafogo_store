@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: historico-publico
@@ -17,9 +15,6 @@ concurrency:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,13 +34,3 @@ jobs:
             sleep "$attempt"
           done
           exit 1
-      - uses: actions/configure-pages@v5
-      - name: Preparar site
-        run: |
-          mkdir _site
-          cp index.html catalogo.json historico.json _site/
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - id: deployment
-        uses: actions/deploy-pages@v4
